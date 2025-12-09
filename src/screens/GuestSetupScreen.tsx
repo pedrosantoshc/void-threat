@@ -119,8 +119,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   title: {
-    fontSize: typography.heading2.fontSize,
-    fontWeight: typography.heading2.fontWeight,
+    fontSize: 24,
+    fontWeight: '700',
     color: darkTheme.colors.onSurface,
     marginLeft: spacing.md,
   },
@@ -129,13 +129,13 @@ const styles = StyleSheet.create({
   },
   textInput: {
     backgroundColor: darkTheme.colors.surface,
-    fontSize: typography.body.fontSize,
+    fontSize: 14,
   },
   avatarSection: {
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontSize: typography.bodyLarge.fontSize,
+    fontSize: 16,
     color: darkTheme.colors.onSurface,
     marginBottom: spacing.lg,
   },
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     color: darkTheme.colors.background,
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
   },
 });

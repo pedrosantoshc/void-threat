@@ -4,7 +4,7 @@ import { Text, TextInput, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { NavigationStackParamList } from '../types';
-import { darkTheme, spacing, typography } from '../constants/theme';
+import { darkTheme, spacing } from '../constants/theme';
 
 type JoinGameScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'JoinGame'>;
@@ -143,13 +143,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   title: {
-    fontSize: typography.heading1.fontSize,
-    fontWeight: typography.heading1.fontWeight,
+    fontSize: 32,
+    fontWeight: '700',
     color: darkTheme.colors.primary,
     marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: typography.body.fontSize,
+    fontSize: 14,
     color: darkTheme.colors.onSurfaceVariant,
     textAlign: 'center',
   },
@@ -160,8 +160,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: typography.bodyLarge.fontSize,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
     color: darkTheme.colors.onSurface,
     marginBottom: spacing.md,
     textAlign: 'center',
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     backgroundColor: darkTheme.colors.outline,
   },
   dividerText: {
-    fontSize: typography.bodySmall.fontSize,
+    fontSize: 12,
     color: darkTheme.colors.onSurfaceVariant,
   },
   codeSection: {
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     backgroundColor: darkTheme.colors.background,
-    fontSize: typography.bodyLarge.fontSize,
+    fontSize: 16,
   },
   joinButton: {
     backgroundColor: darkTheme.colors.primary,
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   joinButtonText: {
     color: darkTheme.colors.background,
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
   },
   helpSection: {
@@ -214,13 +214,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   helpTitle: {
-    fontSize: typography.bodyLarge.fontSize,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
     color: darkTheme.colors.onSurface,
     marginBottom: spacing.sm,
   },
   helpText: {
-    fontSize: typography.body.fontSize,
+    fontSize: 14,
     color: darkTheme.colors.onSurfaceVariant,
     textAlign: 'center',
     lineHeight: 20,

@@ -109,8 +109,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   title: {
-    fontSize: typography.heading1.fontSize,
-    fontWeight: typography.heading1.fontWeight,
+    fontSize: 32,
+    fontWeight: '700',
     color: darkTheme.colors.primary,
   },
   statsCard: {
@@ -118,8 +118,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontSize: typography.heading2.fontSize,
-    fontWeight: typography.heading2.fontWeight,
+    fontSize: 24,
+    fontWeight: '700',
     color: darkTheme.colors.onSurface,
     marginBottom: spacing.lg,
     textAlign: 'center',
@@ -139,15 +139,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   statLabel: {
-    fontSize: typography.bodySmall.fontSize,
+    fontSize: 12,
     color: darkTheme.colors.onSurfaceVariant,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   statValue: {
-    fontSize: typography.body.fontSize,
+    fontSize: 14,
     color: darkTheme.colors.onSurface,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   buttonSection: {
     gap: spacing.md,
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: darkTheme.colors.background,
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
   },
   secondaryButton: {

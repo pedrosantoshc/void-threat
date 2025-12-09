@@ -51,43 +51,15 @@ export const borderRadius = {
   full: 50, // percentage
 };
 
-// Typography
-export const typography = {
-  display: {
-    fontSize: 40,
-    fontWeight: '700' as const,
-    lineHeight: 1.2,
-  },
-  heading1: {
-    fontSize: 32,
-    fontWeight: '700' as const,
-    lineHeight: 1.2,
-  },
-  heading2: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-    lineHeight: 1.2,
-  },
-  bodyLarge: {
-    fontSize: 16,
-    fontWeight: '400' as const,
-    lineHeight: 1.5,
-  },
-  body: {
-    fontSize: 14,
-    fontWeight: '400' as const,
-    lineHeight: 1.5,
-  },
-  bodySmall: {
-    fontSize: 12,
-    fontWeight: '400' as const,
-    lineHeight: 1.5,
-  },
-  caption: {
-    fontSize: 10,
-    fontWeight: '400' as const,
-    lineHeight: 1.4,
-  },
+// Typography constants (use directly in styles)
+export const fontSizes = {
+  display: 40,
+  heading1: 32,
+  heading2: 24,
+  bodyLarge: 16,
+  body: 14,
+  bodySmall: 12,
+  caption: 10,
 };
 
 // Button styles

@@ -7,7 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { NavigationStackParamList } from '../types';
-import { darkTheme, spacing, typography } from '../constants/theme';
+import { darkTheme, spacing } from '../constants/theme';
 
 type CreateGameScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'CreateGame'>;
@@ -208,8 +208,8 @@ const styles = StyleSheet.create({
     backgroundColor: darkTheme.colors.surface,
   },
   sectionTitle: {
-    fontSize: typography.bodyLarge.fontSize,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
     color: darkTheme.colors.onSurface,
     marginBottom: spacing.md,
   },
@@ -221,19 +221,19 @@ const styles = StyleSheet.create({
   },
   gameCode: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: darkTheme.colors.primary,
     fontFamily: 'monospace',
   },
   codeSubtitle: {
-    fontSize: typography.bodySmall.fontSize,
+    fontSize: 12,
     color: darkTheme.colors.onSurfaceVariant,
   },
   linkContainer: {
     gap: spacing.sm,
   },
   gameUrl: {
-    fontSize: typography.body.fontSize,
+    fontSize: 14,
     color: darkTheme.colors.primary,
     fontFamily: 'monospace',
   },
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shareTitle: {
-    fontSize: typography.bodyLarge.fontSize,
+    fontSize: 16,
     color: darkTheme.colors.onSurface,
     marginBottom: spacing.md,
   },
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     color: darkTheme.colors.background,
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
   },
 });

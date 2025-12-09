@@ -28,8 +28,11 @@ const GuestSetupScreen: React.FC<GuestSetupScreenProps> = ({ navigation }) => {
         is_guest: true,
       });
 
-      // Navigate to dashboard
-      navigation.navigate('Dashboard');
+      // Navigate to guest dashboard (not the stats dashboard)
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Dashboard' }],
+      });
     }
   };
 
@@ -55,13 +58,6 @@ const GuestSetupScreen: React.FC<GuestSetupScreenProps> = ({ navigation }) => {
             value={username}
             onChangeText={setUsername}
             style={styles.textInput}
-            theme={{
-              colors: {
-                primary: darkTheme.colors.primary,
-                background: darkTheme.colors.surface,
-                onBackground: darkTheme.colors.onSurface,
-              },
-            }}
             maxLength={20}
             autoFocus
           />

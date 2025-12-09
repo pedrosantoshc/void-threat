@@ -79,13 +79,6 @@ const JoinGameScreen: React.FC<JoinGameScreenProps> = ({ navigation }) => {
                 value={gameCode}
                 onChangeText={(text) => setGameCode(text.toUpperCase())}
                 style={styles.textInput}
-                theme={{
-                  colors: {
-                    primary: darkTheme.colors.primary,
-                    background: darkTheme.colors.surface,
-                    onBackground: darkTheme.colors.onSurface,
-                  },
-                }}
                 maxLength={10}
                 autoCapitalize="characters"
                 placeholder="VOID123"

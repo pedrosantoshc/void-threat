@@ -4,14 +4,23 @@ import { Text, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { NavigationStackParamList } from '../types';
-import { darkTheme, spacing, typography } from '../constants/theme';
+import { darkTheme, spacing } from '../constants/theme';
+import { useGameStore } from '../store/gameStore';
+import GuestDashboardScreen from './GuestDashboardScreen';
 
 type DashboardScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'Dashboard'>;
 };
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
-  // Placeholder stats - TODO: Get from user profile
+  const currentUser = useGameStore((state) => state.currentUser);
+
+  // If user is a guest, show guest dashboard
+  if (currentUser?.is_guest) {
+    return <GuestDashboardScreen navigation={navigation} />;
+  }
+
+  // For logged-in users, show stats dashboard
   const stats = {
     gamesPlayed: 0,
     minutesPlayed: 0,

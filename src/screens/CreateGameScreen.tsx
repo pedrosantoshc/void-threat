@@ -1,7 +1,10 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, Button, Card } from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { Text, Button, Card, Snackbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import QRCode from 'react-native-qrcode-svg';
+import * as Clipboard from 'expo-clipboard';
+import * as Sharing from 'expo-sharing';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { NavigationStackParamList } from '../types';
 import { darkTheme, spacing, typography } from '../constants/theme';
@@ -11,23 +14,61 @@ type CreateGameScreenProps = {
 };
 
 const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
-  // TODO: Generate actual game code
-  const gameCode = 'VOID123';
-  const gameUrl = `void.app/join/${gameCode}`;
-
-  const handleCopyCode = () => {
-    // TODO: Implement clipboard copy
-    console.log('Copy code:', gameCode);
+  // Generate random game code
+  const generateGameCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let result = 'VOID';
+    for (let i = 0; i < 3; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
   };
 
-  const handleCopyUrl = () => {
-    // TODO: Implement clipboard copy
-    console.log('Copy URL:', gameUrl);
+  const gameCode = generateGameCode();
+  const gameUrl = `https://void.app/join/${gameCode}`;
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  const showSnackbar = (message: string) => {
+    setSnackbarMessage(message);
+    setSnackbarVisible(true);
   };
 
-  const handleShare = () => {
-    // TODO: Implement native sharing
-    console.log('Share game:', gameUrl);
+  const handleCopyCode = async () => {
+    try {
+      await Clipboard.setStringAsync(gameCode);
+      showSnackbar('Game code copied!');
+    } catch (error) {
+      showSnackbar('Failed to copy code');
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await Clipboard.setStringAsync(gameUrl);
+      showSnackbar('Game link copied!');
+    } catch (error) {
+      showSnackbar('Failed to copy link');
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(gameUrl, {
+          mimeType: 'text/plain',
+          dialogTitle: 'Share Void Threat Game',
+        });
+      } else {
+        // Fallback to clipboard
+        await Clipboard.setStringAsync(gameUrl);
+        showSnackbar('Link copied to clipboard!');
+      }
+    } catch (error) {
+      console.log('Share error:', error);
+      showSnackbar('Failed to share');
+    }
   };
 
   return (
@@ -60,7 +101,6 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
                   icon="content-copy"
                   onPress={handleCopyUrl}
                   textColor={darkTheme.colors.primary}
-                  compact
                 >
                   Copy
                 </Button>
@@ -68,7 +108,6 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
                   icon="share"
                   onPress={handleShare}
                   textColor={darkTheme.colors.primary}
-                  compact
                 >
                   Share
                 </Button>
@@ -82,10 +121,13 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
           <Card.Content>
             <Text style={styles.sectionTitle}>OR SCAN QR CODE</Text>
             <View style={styles.qrContainer}>
-              <View style={styles.qrPlaceholder}>
-                <Text style={styles.qrText}>QR CODE</Text>
-                <Text style={styles.qrSubtext}>(Coming soon)</Text>
-              </View>
+              <QRCode
+                value={gameUrl}
+                size={120}
+                color="#FFFFFF"
+                backgroundColor="#0A0E27"
+                logo={undefined}
+              />
             </View>
           </Card.Content>
         </Card>
@@ -137,6 +179,16 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
           </Button>
         </View>
       </View>
+
+      {/* Snackbar for copy/share feedback */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={{ backgroundColor: darkTheme.colors.surface }}
+      >
+        <Text style={{ color: darkTheme.colors.primary }}>{snackbarMessage}</Text>
+      </Snackbar>
     </SafeAreaView>
   );
 };
@@ -191,25 +243,6 @@ const styles = StyleSheet.create({
   },
   qrContainer: {
     alignItems: 'center',
-  },
-  qrPlaceholder: {
-    width: 120,
-    height: 120,
-    backgroundColor: darkTheme.colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: darkTheme.colors.outline,
-  },
-  qrText: {
-    fontSize: typography.body.fontSize,
-    color: darkTheme.colors.onSurfaceVariant,
-    fontWeight: 'bold',
-  },
-  qrSubtext: {
-    fontSize: typography.bodySmall.fontSize,
-    color: darkTheme.colors.outline,
   },
   shareButtons: {
     alignItems: 'center',

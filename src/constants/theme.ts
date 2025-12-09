@@ -5,38 +5,31 @@ export const darkTheme = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    // Primary colors from design system
-    primary: '#00FF00', // Neon Green
-    primaryContainer: '#00DD00', // Deep Green
-    
-    // Background colors
-    background: '#0A0E27', // Space Black
-    surface: '#1B1F3B', // Dark grey-blue
-    surfaceVariant: '#2D3B52', // Subtle border
-    
-    // Text colors
-    onBackground: '#FFFFFF', // Primary Text
-    onSurface: '#FFFFFF', // Primary Text
-    onSurfaceVariant: '#B0B0B0', // Secondary Text
-    outline: '#616161', // Disabled Text
-    
-    // Semantic colors
-    error: '#F44336', // Danger/Dead
+    primary: '#00FF00',
+    primaryContainer: '#00DD00',
+    background: '#0A0E27',
+    surface: '#1B1F3B',
+    surfaceVariant: '#2D3B52',
+    onBackground: '#FFFFFF',
+    onSurface: '#FFFFFF',
+    onSurfaceVariant: '#B0B0B0',
+    outline: '#616161',
+    error: '#F44336',
     errorContainer: '#D32F2F',
-    success: '#4CAF50', // Success/Alive
-    warning: '#FF9800', // Warning/Silenced
-    info: '#2196F3', // Information
-    
-    // Team colors
-    crew: '#4CAF50', // Crew Green
-    alien: '#F44336', // Alien Red
-    independent: '#9C27B0', // Independent Purple
-    
-    // Balance colors
-    crewFavored: '#4CAF50',
-    alienFavored: '#F44336',
-    balanced: '#9E9E9E',
   },
+};
+
+// App-specific colors that are NOT part of Paper's MD3 theme
+export const appColors = {
+  success: '#4CAF50',
+  warning: '#FF9800',
+  info: '#2196F3',
+  crew: '#4CAF50',
+  alien: '#F44336',
+  independent: '#9C27B0',
+  crewFavored: '#4CAF50',
+  alienFavored: '#F44336',
+  balanced: '#9E9E9E',
 };
 
 // Spacing system (8px grid)
@@ -62,37 +55,37 @@ export const borderRadius = {
 export const typography = {
   display: {
     fontSize: 40,
-    fontWeight: 'bold' as const,
+    fontWeight: '700' as const,
     lineHeight: 1.2,
   },
   heading1: {
     fontSize: 32,
-    fontWeight: 'bold' as const,
+    fontWeight: '700' as const,
     lineHeight: 1.2,
   },
   heading2: {
     fontSize: 24,
-    fontWeight: 'bold' as const,
+    fontWeight: '700' as const,
     lineHeight: 1.2,
   },
   bodyLarge: {
     fontSize: 16,
-    fontWeight: 'normal' as const,
+    fontWeight: '400' as const,
     lineHeight: 1.5,
   },
   body: {
     fontSize: 14,
-    fontWeight: 'normal' as const,
+    fontWeight: '400' as const,
     lineHeight: 1.5,
   },
   bodySmall: {
     fontSize: 12,
-    fontWeight: 'normal' as const,
+    fontWeight: '400' as const,
     lineHeight: 1.5,
   },
   caption: {
     fontSize: 10,
-    fontWeight: 'normal' as const,
+    fontWeight: '400' as const,
     lineHeight: 1.4,
   },
 };

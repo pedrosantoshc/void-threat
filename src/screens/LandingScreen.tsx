@@ -1,16 +1,43 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { NavigationStackParamList } from '../types';
-import { darkTheme, spacing, typography } from '../constants/theme';
+import { darkTheme, spacing } from '../constants/theme';
+import { supabase } from '../config/supabase';
 
 type LandingScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'Landing'>;
 };
 
 const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'exp://localhost:19000', // For Expo Go
+        },
+      });
+
+      if (error) {
+        Alert.alert('Login Error', error.message);
+        return;
+      }
+
+      // Success - navigate to dashboard
+      navigation.navigate('Dashboard');
+    } catch (error) {
+      Alert.alert('Login Error', 'Failed to login with Google');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -29,14 +56,13 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
         <View style={styles.buttonSection}>
           <Button
             mode="contained"
-            onPress={() => {
-              // TODO: Implement Google OAuth
-              navigation.navigate('Dashboard');
-            }}
+            onPress={handleGoogleLogin}
+            loading={isLoading}
+            disabled={isLoading}
             style={styles.primaryButton}
             labelStyle={styles.primaryButtonText}
           >
-            LOGIN WITH GOOGLE
+            {isLoading ? 'SIGNING IN...' : 'LOGIN WITH GOOGLE'}
           </Button>
 
           <Button
@@ -70,14 +96,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxl,
   },
   title: {
-    fontSize: typography.display.fontSize,
-    fontWeight: typography.display.fontWeight,
+    fontSize: 40,
+    fontWeight: '700',
     color: darkTheme.colors.primary,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   tagline: {
-    fontSize: typography.bodyLarge.fontSize,
+    fontSize: 16,
     color: darkTheme.colors.onSurfaceVariant,
     textAlign: 'center',
   },
@@ -101,7 +127,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: darkTheme.colors.background,
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
   },
   secondaryButton: {

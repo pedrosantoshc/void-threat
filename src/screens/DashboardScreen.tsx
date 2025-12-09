@@ -1,0 +1,168 @@
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { Text, Button, Card } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { NavigationStackParamList } from '../types';
+import { darkTheme, spacing, typography } from '../constants/theme';
+
+type DashboardScreenProps = {
+  navigation: StackNavigationProp<NavigationStackParamList, 'Dashboard'>;
+};
+
+const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
+  // Placeholder stats - TODO: Get from user profile
+  const stats = {
+    gamesPlayed: 0,
+    minutesPlayed: 0,
+    avgRoundsSurvived: 0,
+    mostCommonRole: 'None yet',
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>VOID THREAT</Text>
+        </View>
+
+        {/* Player Stats */}
+        <Card style={styles.statsCard}>
+          <Card.Content>
+            <Text style={styles.sectionTitle}>PLAYER STATS</Text>
+            
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Text style={styles.statEmoji}>📊</Text>
+                <Text style={styles.statLabel}>Games Played</Text>
+                <Text style={styles.statValue}>{stats.gamesPlayed}</Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statEmoji}>⏱️</Text>
+                <Text style={styles.statLabel}>Minutes Played</Text>
+                <Text style={styles.statValue}>{stats.minutesPlayed}</Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statEmoji}>🎯</Text>
+                <Text style={styles.statLabel}>Avg Rounds Survived</Text>
+                <Text style={styles.statValue}>{stats.avgRoundsSurvived}</Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statEmoji}>🎭</Text>
+                <Text style={styles.statLabel}>Most Common Role</Text>
+                <Text style={styles.statValue}>{stats.mostCommonRole}</Text>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Action Buttons */}
+        <View style={styles.buttonSection}>
+          <Button
+            mode="contained"
+            onPress={() => navigation.navigate('CreateGame')}
+            style={styles.primaryButton}
+            labelStyle={styles.primaryButtonText}
+          >
+            CREATE NEW GAME
+          </Button>
+
+          <Button
+            mode="outlined"
+            onPress={() => navigation.navigate('JoinGame')}
+            style={styles.secondaryButton}
+            labelStyle={styles.secondaryButtonText}
+          >
+            JOIN EXISTING GAME
+          </Button>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: darkTheme.colors.background,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.lg,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  title: {
+    fontSize: typography.heading1.fontSize,
+    fontWeight: typography.heading1.fontWeight,
+    color: darkTheme.colors.primary,
+  },
+  statsCard: {
+    backgroundColor: darkTheme.colors.surface,
+    marginBottom: spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: typography.heading2.fontSize,
+    fontWeight: typography.heading2.fontWeight,
+    color: darkTheme.colors.onSurface,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    width: '48%',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  statEmoji: {
+    fontSize: 24,
+    marginBottom: spacing.xs,
+  },
+  statLabel: {
+    fontSize: typography.bodySmall.fontSize,
+    color: darkTheme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  statValue: {
+    fontSize: typography.body.fontSize,
+    color: darkTheme.colors.onSurface,
+    fontWeight: 'bold',
+  },
+  buttonSection: {
+    gap: spacing.md,
+    marginTop: 'auto',
+  },
+  primaryButton: {
+    backgroundColor: darkTheme.colors.primary,
+    borderRadius: 4,
+    paddingVertical: spacing.sm,
+  },
+  primaryButtonText: {
+    color: darkTheme.colors.background,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  secondaryButton: {
+    borderColor: darkTheme.colors.primary,
+    borderRadius: 4,
+    paddingVertical: spacing.sm,
+  },
+  secondaryButtonText: {
+    color: darkTheme.colors.primary,
+    fontSize: 16,
+  },
+});
+
+export default DashboardScreen;

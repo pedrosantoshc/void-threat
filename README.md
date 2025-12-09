@@ -33,7 +33,7 @@ A mobile social deduction game where players compete in hidden-role gameplay. On
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/void-threat.git
+   git clone https://github.com/pedrosantoshc/void-threat.git
    cd void-threat
    ```
 

@@ -8,12 +8,31 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationStackParamList } from './src/types';
 import { darkTheme } from './src/constants/theme';
 
-// Import screens (to be created)
+// Import screens
 import LandingScreen from './src/screens/LandingScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import GuestSetupScreen from './src/screens/GuestSetupScreen';
 import CreateGameScreen from './src/screens/CreateGameScreen';
 import JoinGameScreen from './src/screens/JoinGameScreen';
+
+// Placeholder screen for missing routes
+const PlaceholderScreen = ({ route }: any) => {
+  const { View, Text, StyleSheet } = require('react-native');
+  const { SafeAreaView } = require('react-native-safe-area-context');
+  
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0A0E27' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Text style={{ color: '#00FF00', fontSize: 24, fontWeight: 'bold', marginBottom: 16 }}>
+          {route?.name || 'Screen'}
+        </Text>
+        <Text style={{ color: '#FFFFFF', textAlign: 'center', fontSize: 16 }}>
+          This screen is coming soon!
+        </Text>
+      </View>
+    </SafeAreaView>
+  );
+};
 
 const Stack = createStackNavigator<NavigationStackParamList>();
 
@@ -60,6 +79,46 @@ export default function App() {
               name="JoinGame" 
               component={JoinGameScreen}
               options={{ title: 'Join Game' }}
+            />
+            <Stack.Screen 
+              name="GameModeSelector" 
+              component={PlaceholderScreen}
+              options={{ title: 'Game Mode' }}
+            />
+            <Stack.Screen 
+              name="CustomGame" 
+              component={PlaceholderScreen}
+              options={{ title: 'Custom Game' }}
+            />
+            <Stack.Screen 
+              name="GameSetup" 
+              component={PlaceholderScreen}
+              options={{ title: 'Game Setup' }}
+            />
+            <Stack.Screen 
+              name="PlayerRole" 
+              component={PlaceholderScreen}
+              options={{ title: 'Your Role' }}
+            />
+            <Stack.Screen 
+              name="ModeratorDashboard" 
+              component={PlaceholderScreen}
+              options={{ title: 'Moderator' }}
+            />
+            <Stack.Screen 
+              name="NightPhase" 
+              component={PlaceholderScreen}
+              options={{ title: 'Night Phase' }}
+            />
+            <Stack.Screen 
+              name="DayPhase" 
+              component={PlaceholderScreen}
+              options={{ title: 'Day Phase' }}
+            />
+            <Stack.Screen 
+              name="GameEnd" 
+              component={PlaceholderScreen}
+              options={{ title: 'Game Over' }}
             />
           </Stack.Navigator>
         </NavigationContainer>

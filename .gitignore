@@ -32,6 +32,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -39,3 +40,32 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Additional Void Threat specific
+# Logs
+*.log
+
+# Coverage directory
+coverage/
+
+# VS Code
+.vscode/
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Temporary folders
+tmp/
+temp/
+
+# EAS
+.eas/
+
+# Bundle artifacts
+*.jsbundle
+
+# Supabase local
+supabase/.env
+supabase/functions/.env

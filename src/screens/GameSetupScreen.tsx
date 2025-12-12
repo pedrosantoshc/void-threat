@@ -7,7 +7,7 @@ import { RouteProp } from '@react-navigation/native';
 import { NavigationStackParamList, GamePlayer } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
-import { assignStandardRoles, AssignmentResult, shuffleRoles } from '../utils/roleAssignment';
+import { assignStandardRoles, assignCustomRoles, AssignmentResult, shuffleRoles } from '../utils/roleAssignment';
 import { GameService } from '../services/gameService';
 
 type GameSetupScreenProps = {
@@ -27,17 +27,37 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({
   const [isAssigning, setIsAssigning] = useState(false);
   const [showRoles, setShowRoles] = useState(false);
 
-  // Generate role assignment when player count changes
+  // Keep local playerCount in sync with session max_players for custom mode
   useEffect(() => {
-    if (current_game?.game_mode === 'standard') {
-      try {
+    if (current_game?.max_players && current_game?.game_mode === 'custom') {
+      setPlayerCount(current_game.max_players);
+    }
+  }, [current_game?.max_players, current_game?.game_mode]);
+
+  // Generate role assignment when player count changes (standard) OR when custom_roles changes (custom)
+  useEffect(() => {
+    try {
+      if (current_game?.game_mode === 'standard') {
         const result = assignStandardRoles(playerCount);
         setAssignment(result);
-      } catch (error) {
-        console.error('Error assigning roles:', error);
+        return;
       }
+
+      if (current_game?.game_mode === 'custom') {
+        const custom = (current_game as any).custom_roles as Record<string, number> | undefined;
+        if (!custom || Object.keys(custom).length === 0) {
+          setAssignment(null);
+          return;
+        }
+
+        const result = assignCustomRoles(custom);
+        setAssignment(result);
+        return;
+      }
+    } catch (error) {
+      console.error('Error assigning roles:', error);
     }
-  }, [playerCount, current_game?.game_mode]);
+  }, [playerCount, current_game?.game_mode, (current_game as any)?.custom_roles]);
 
   const handleAssignRoles = async () => {
     if (!assignment || !current_game) return;
@@ -122,7 +142,11 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <Text style={styles.title}>Loading Game Setup...</Text>
+          <Text style={styles.title}>
+            {current_game?.game_mode === 'custom'
+              ? 'Custom setup not configured yet. Go back and configure roles.'
+              : 'Loading Game Setup...'}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -139,28 +163,36 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({
           </Text>
         </View>
 
-        {/* Player Count Input */}
+        {/* Player Count */}
         <Card style={styles.card}>
           <Card.Content>
             <Text style={styles.cardTitle}>Player Count</Text>
-            <View style={styles.playerCountContainer}>
-              <View style={styles.playerCountInput}>
-                <TextInput
-                  label="Number of Players"
-                  value={playerCount.toString()}
-                  onChangeText={(text) => {
-                    const count = parseInt(text) || 0;
-                    if (count >= 5 && count <= 15) {
-                      setPlayerCount(count);
-                    }
-                  }}
-                  keyboardType="numeric"
-                  style={styles.textInput}
-                  maxLength={2}
-                />
+            {current_game?.game_mode === 'custom' ? (
+              <View style={styles.playerCountContainer}>
+                <Text style={styles.playerCountHelp}>
+                  Custom mode uses the count configured in Custom Game: {playerCount} players
+                </Text>
               </View>
-              <Text style={styles.playerCountHelp}>Min: 5 • Optimal: 8-12 • Max: 15</Text>
-            </View>
+            ) : (
+              <View style={styles.playerCountContainer}>
+                <View style={styles.playerCountInput}>
+                  <TextInput
+                    label="Number of Players"
+                    value={playerCount.toString()}
+                    onChangeText={(text) => {
+                      const count = parseInt(text) || 0;
+                      if (count >= 5 && count <= 15) {
+                        setPlayerCount(count);
+                      }
+                    }}
+                    keyboardType="numeric"
+                    style={styles.textInput}
+                    maxLength={2}
+                  />
+                </View>
+                <Text style={styles.playerCountHelp}>Min: 5 • Optimal: 8-12 • Max: 15</Text>
+              </View>
+            )}
           </Card.Content>
         </Card>
 

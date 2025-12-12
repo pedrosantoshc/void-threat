@@ -7,6 +7,7 @@ import { RouteProp } from '@react-navigation/native';
 import { NavigationStackParamList } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
+import { GameService } from '../services/gameService';
 
 type GameModeSelectorScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'GameModeSelector'>;
@@ -18,11 +19,15 @@ const GameModeSelectorScreen: React.FC<GameModeSelectorScreenProps> = ({
   route,
 }) => {
   const { game_id } = route.params;
-  const { setGameMode } = useGameStore();
+  const { setGameMode, setCurrentGame } = useGameStore();
 
   const handleStandardMode = () => {
     // Set standard mode (uses all 26 roles)
     setGameMode('standard');
+    // Persist to DB (best-effort)
+    GameService.updateGameSession(game_id, { game_mode: 'standard', custom_roles: null } as any)
+      .then(setCurrentGame)
+      .catch(() => undefined);
     // Navigate to game setup with role assignment
     navigation.navigate('GameSetup', { game_id });
   };
@@ -30,9 +35,7 @@ const GameModeSelectorScreen: React.FC<GameModeSelectorScreenProps> = ({
   const handleCustomMode = () => {
     // Set custom mode and navigate to role customizer
     setGameMode('custom');
-    // For now, navigate to custom game screen (to be built later)
-    // TODO: Replace with actual player count input
-    navigation.navigate('CustomGame', { game_id, player_count: 8 });
+    navigation.navigate('CustomGame', { game_id });
   };
 
   return (

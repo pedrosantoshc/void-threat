@@ -148,7 +148,7 @@ export type NavigationStackParamList = {
   JoinGame: undefined;
   PaperTest: undefined;
   GameModeSelector: { game_id: string };
-  CustomGame: { game_id: string; player_count: number };
+  CustomGame: { game_id: string };
   GameSetup: { game_id: string };
   PlayerRole: { game_id: string; player_id: string };
   ModeratorDashboard: { game_id: string };

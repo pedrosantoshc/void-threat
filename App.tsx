@@ -15,6 +15,7 @@ import GuestSetupScreen from './src/screens/GuestSetupScreen';
 import CreateGameScreen from './src/screens/CreateGameScreen';
 import JoinGameScreen from './src/screens/JoinGameScreen';
 import GameModeSelectorScreen from './src/screens/GameModeSelectorScreen';
+import CustomGameScreen from './src/screens/CustomGameScreen';
 import GameSetupScreen from './src/screens/GameSetupScreen';
 import PlayerRoleScreen from './src/screens/PlayerRoleScreen';
 import NightPhaseScreen from './src/screens/NightPhaseScreen';
@@ -99,6 +100,11 @@ export default function App() {
               name="GameModeSelector"
               component={GameModeSelectorScreen}
               options={{ title: 'Game Mode' }}
+            />
+            <Stack.Screen
+              name="CustomGame"
+              component={CustomGameScreen}
+              options={{ title: 'Custom Game' }}
             />
             <Stack.Screen
               name="GameSetup"

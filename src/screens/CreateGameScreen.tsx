@@ -78,6 +78,12 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
 
   const handleCreateGame = async () => {
     try {
+      if (!currentUser || currentUser.is_guest) {
+        Alert.alert('Login required', 'You must be logged in to create a game.');
+        navigation.navigate('Auth');
+        return;
+      }
+
       setIsCreatingGame(true);
       
       // Check if game code is available
@@ -91,7 +97,7 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
 
       // Create game session object
       const gameData: Omit<GameSession, 'id'> = {
-        host_id: currentUser?.id || 'guest_' + Date.now(),
+        host_id: currentUser.id,
         game_code: gameCode,
         game_url: gameUrl,
         max_players: 15,

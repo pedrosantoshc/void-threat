@@ -3,6 +3,29 @@ import { GameSession, GamePlayer, AppUser } from '../types';
 
 export class GameService {
   /**
+   * Get an existing guest player row in a game by guest_id
+   */
+  static async getGuestPlayerInGame(gameId: string, guestId?: string): Promise<GamePlayer | null> {
+    if (!guestId) return null;
+    try {
+      const { data, error } = await supabase
+        .from('game_players')
+        .select('*')
+        .eq('game_id', gameId)
+        .eq('guest_id', guestId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching guest player:', error);
+        return null;
+      }
+      return data || null;
+    } catch (error) {
+      console.error('Get guest player error:', error);
+      return null;
+    }
+  }
+  /**
    * Create a new game session in Supabase
    */
   static async createGameSession(gameData: Omit<GameSession, 'id'>): Promise<GameSession> {
@@ -100,9 +123,16 @@ export class GameService {
       }
 
       // Check if user is already in the game
-      const existingPlayer = await this.getPlayerInGame(game.id, user.id);
-      if (existingPlayer) {
-        return { game, player: existingPlayer };
+      if (user.is_guest) {
+        const existingGuest = await this.getGuestPlayerInGame(game.id, user.guest_id);
+        if (existingGuest) {
+          return { game, player: existingGuest };
+        }
+      } else {
+        const existingPlayer = await this.getPlayerInGame(game.id, user.id);
+        if (existingPlayer) {
+          return { game, player: existingPlayer };
+        }
       }
 
       // Get current player count
@@ -117,7 +147,8 @@ export class GameService {
       const newPlayer: Omit<GamePlayer, 'id'> = {
         game_id: game.id,
         user_id: user.is_guest ? undefined : user.id,
-        username: user.username,
+        guest_id: user.is_guest ? user.guest_id : undefined,
+        username: user.username || user.name || 'Player',
         role: 'crew_member', // Default, will be assigned later
         team: 'crew',
         is_alive: true,

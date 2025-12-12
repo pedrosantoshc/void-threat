@@ -24,6 +24,7 @@ export interface GamePlayer {
   id: string;
   game_id: string;
   user_id?: string; // NULL if guest
+  guest_id?: string; // UUID per device install for guests
   username: string;
   role: string; // 'crew_member', 'bioscanner', 'alien', etc.
   team: 'crew' | 'alien' | 'independent';
@@ -122,6 +123,7 @@ export interface AppUser {
   username?: string;
   avatar_icon?: string;
   is_guest?: boolean;
+  guest_id?: string; // UUID per device install (guests only)
 }
 
 export interface GameState {

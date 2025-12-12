@@ -8,6 +8,7 @@ import { NavigationStackParamList } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
 import { supabase } from '../config/supabase';
 import { useGameStore } from '../store/gameStore';
+import { BUILD_STAMP } from '../constants/build';
 
 type LandingScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'Landing'>;
@@ -82,7 +83,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
 
                 // 0) Verify we're pointing at a real Supabase project (JWKS should always exist)
                 if (configuredUrl) {
-                  const jwksUrl = `${configuredUrl.replace(/\\/$/, '')}/auth/v1/.well-known/jwks.json`;
+                  const jwksUrl = `${configuredUrl.replace(/\/$/, '')}/auth/v1/.well-known/jwks.json`;
                   const jwksRes = await fetch(jwksUrl);
                   if (!jwksRes.ok) {
                     Alert.alert(
@@ -130,6 +131,10 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
           >
             Ping Supabase (Debug)
           </Button>
+
+          <Text style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>
+            Build: {BUILD_STAMP}
+          </Text>
         </View>
       </View>
     </SafeAreaView>

@@ -6,6 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { NavigationStackParamList } from '../types';
 import { darkTheme, spacing, typography } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
+import { getOrCreateGuestId } from '../utils/guestId';
 
 type GuestSetupScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'GuestSetup'>;
@@ -19,13 +20,17 @@ const GuestSetupScreen: React.FC<GuestSetupScreenProps> = ({ navigation }) => {
   const [selectedIcon, setSelectedIcon] = useState('🚀');
   const setCurrentUser = useGameStore((state) => state.setCurrentUser);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (username.trim()) {
+      const guestId = await getOrCreateGuestId();
       // Set guest user in store
       setCurrentUser({
+        id: guestId,
+        name: username.trim(),
         username: username.trim(),
         avatar_icon: selectedIcon,
         is_guest: true,
+        guest_id: guestId,
       });
 
       // Navigate to guest dashboard (not the stats dashboard)

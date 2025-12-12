@@ -34,15 +34,6 @@ const GuestDashboardScreen: React.FC<GuestDashboardScreenProps> = ({ navigation 
           
           <View style={styles.buttonContainer}>
             <Button
-              mode="contained"
-              onPress={() => navigation.navigate('CreateGame')}
-              style={styles.primaryButton}
-              icon="plus"
-            >
-              CREATE NEW GAME
-            </Button>
-
-            <Button
               mode="outlined"
               onPress={() => navigation.navigate('JoinGame')}
               style={styles.secondaryButton}
@@ -57,17 +48,9 @@ const GuestDashboardScreen: React.FC<GuestDashboardScreenProps> = ({ navigation 
         <View style={styles.infoSection}>
           <Text style={styles.infoTitle}>Playing as Guest</Text>
           <Text style={styles.infoText}>
-            You're playing without an account. Your progress won't be saved, 
-            but you can still create and join games!
+            You're playing without an account. Your progress won't be saved.
+            To host a game, please log in.
           </Text>
-          
-          <Button
-            mode="text"
-            onPress={() => navigation.navigate('Landing')}
-            style={styles.loginPrompt}
-          >
-            Want to save progress? Login with Google
-          </Button>
         </View>
       </View>
     </SafeAreaView>

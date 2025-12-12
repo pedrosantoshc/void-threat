@@ -6,14 +6,19 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { NavigationStackParamList } from '../types';
+import { NavigationStackParamList, GameSession } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
+import { useGameStore } from '../store/gameStore';
+import { GameService } from '../services/gameService';
 
 type CreateGameScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'CreateGame'>;
 };
 
 const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
+  const { currentUser, setCurrentGame } = useGameStore();
+  const [isCreatingGame, setIsCreatingGame] = useState(false);
+  
   // Generate random game code
   const generateGameCode = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -68,6 +73,59 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
     } catch (error) {
       console.log('Share error:', error);
       showSnackbar('Failed to share');
+    }
+  };
+
+  const handleCreateGame = async () => {
+    try {
+      setIsCreatingGame(true);
+      
+      // Check if game code is available
+      const isAvailable = await GameService.isGameCodeAvailable(gameCode);
+      if (!isAvailable) {
+        // Generate a new code if this one is taken
+        const newCode = generateGameCode();
+        showSnackbar('Code taken, generated new one: ' + newCode);
+        return; // Let user try again with new code
+      }
+
+      // Create game session object
+      const gameData: Omit<GameSession, 'id'> = {
+        host_id: currentUser?.id || 'guest_' + Date.now(),
+        game_code: gameCode,
+        game_url: gameUrl,
+        max_players: 15,
+        player_count: 1, // Host counts as first player
+        game_mode: 'standard', // Default, will be changed in mode selector
+        status: 'setup',
+        current_phase: 'lobby',
+        night_number: 0,
+        day_number: 0,
+        started_at: null,
+        ended_at: null,
+        winner: null,
+      };
+
+      // Create game in Supabase
+      const createdGame = await GameService.createGameSession(gameData);
+      
+      // Save game to store
+      setCurrentGame(createdGame);
+      
+      // Automatically join the moderator as first player
+      if (currentUser) {
+        await GameService.joinGame(gameCode, currentUser);
+      }
+      
+      showSnackbar('Game created successfully!');
+      
+      // Navigate to game mode selector
+      navigation.navigate('GameModeSelector', { game_id: createdGame.id });
+    } catch (error) {
+      console.error('Error creating game:', error);
+      showSnackbar('Failed to create game: ' + (error as Error).message);
+    } finally {
+      setIsCreatingGame(false);
     }
   };
 
@@ -167,15 +225,13 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
         <View style={styles.buttonSection}>
           <Button
             mode="contained"
-            onPress={() => {
-              // TODO: Create actual game in database
-              // For now, navigate to mode selector with placeholder game ID
-              navigation.navigate('GameModeSelector', { game_id: 'placeholder' });
-            }}
+            onPress={handleCreateGame}
+            loading={isCreatingGame}
+            disabled={isCreatingGame}
             style={styles.nextButton}
             labelStyle={styles.nextButtonText}
           >
-            NEXT: CHOOSE GAME MODE
+            {isCreatingGame ? 'CREATING GAME...' : 'NEXT: CHOOSE GAME MODE'}
           </Button>
         </View>
       </View>

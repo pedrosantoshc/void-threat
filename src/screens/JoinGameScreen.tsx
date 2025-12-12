@@ -1,31 +1,62 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { NavigationStackParamList } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
+import { useGameStore } from '../store/gameStore';
+import { GameService } from '../services/gameService';
 
 type JoinGameScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'JoinGame'>;
 };
 
 const JoinGameScreen: React.FC<JoinGameScreenProps> = ({ navigation }) => {
+  const { currentUser, setCurrentGame, setCurrentPlayer } = useGameStore();
   const [gameCode, setGameCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleJoinGame = async () => {
-    if (!gameCode.trim()) return;
+    if (!gameCode.trim() || !currentUser) return;
 
-    setIsLoading(true);
-    
-    // TODO: Implement actual game joining logic
-    setTimeout(() => {
+    try {
+      setIsLoading(true);
+      
+      // Join the game
+      const { game, player } = await GameService.joinGame(gameCode.toUpperCase(), currentUser);
+      
+      // Update store
+      setCurrentGame(game);
+      setCurrentPlayer(player);
+      
+      // Navigate based on game status
+      if (game.status === 'setup') {
+        // Game is still in setup, wait for role assignment
+        Alert.alert(
+          'Joined Game!', 
+          `You've successfully joined ${game.game_code}. Wait for the moderator to assign roles and start the game.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Dashboard') // TODO: Navigate to waiting room
+            }
+          ]
+        );
+      } else if (game.status === 'playing') {
+        // Game is in progress, show role
+        navigation.navigate('PlayerRole', { 
+          game_id: game.id, 
+          player_id: player.id 
+        });
+      }
+      
+    } catch (error) {
+      console.error('Join game error:', error);
+      Alert.alert('Join Failed', (error as Error).message);
+    } finally {
       setIsLoading(false);
-      // For now, just show success message
-      console.log('Joining game:', gameCode.toUpperCase());
-      // Navigate to waiting screen or game setup
-    }, 1000);
+    }
   };
 
   const handleScanQR = () => {

@@ -3,19 +3,21 @@
 
 export interface GameSession {
   id: string;
-  moderator_id: string;
+  host_id: string;
   game_code: string; // For joining (e.g., "VOID123")
-  game_url: string; // For sharing via link
+  game_url: string; // Shareable join link (stored on game_sessions)
+  max_players: number;
   player_count: number;
   game_mode: 'standard' | 'custom';
-  custom_roles?: Record<string, number>; // { 'bioscanner': 2, 'alien': 3, ... }
+  custom_roles?: Record<string, number>; // if/when you add this column
   status: 'setup' | 'playing' | 'ended';
-  current_phase: 'night1' | 'night2plus' | 'day1' | 'day2plus';
+  current_phase: string;
   night_number: number;
   day_number: number;
-  started_at: string; // ISO timestamp
-  ended_at?: string; // ISO timestamp
-  winner: 'crew' | 'aliens' | 'rogue_alien' | 'predator' | null;
+  created_at?: string; // ISO timestamp
+  started_at?: string | null; // ISO timestamp
+  ended_at?: string | null; // ISO timestamp
+  winner?: string | null;
 }
 
 export interface GamePlayer {
@@ -114,10 +116,12 @@ export interface RoleDefinition {
 
 // UI State types
 export interface AppUser {
-  id?: string;
-  username: string;
-  avatar_icon: string;
-  is_guest: boolean;
+  id: string;
+  name: string;
+  email?: string;
+  username?: string;
+  avatar_icon?: string;
+  is_guest?: boolean;
 }
 
 export interface GameState {
@@ -133,7 +137,10 @@ export interface GameState {
 
 export type NavigationStackParamList = {
   Landing: undefined;
+  Auth: undefined;
   Dashboard: undefined;
+  UserDashboard: undefined;
+  UserProfile: undefined;
   GuestSetup: undefined;
   CreateGame: undefined;
   JoinGame: undefined;

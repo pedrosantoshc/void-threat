@@ -19,6 +19,7 @@ interface GameStore extends GameState {
   setCurrentUser: (user: AppUser | null) => void;
   setCurrentGame: (game: GameSession | undefined) => void;
   setCurrentPlayer: (player: GamePlayer | undefined) => void;
+  setGameMode: (mode: 'standard' | 'custom') => void;
   setPlayers: (players: GamePlayer[]) => void;
   addPlayer: (player: GamePlayer) => void;
   updatePlayer: (playerId: string, updates: Partial<GamePlayer>) => void;
@@ -67,6 +68,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // Game actions
   setCurrentGame: (game) => set({ current_game: game }),
   setCurrentPlayer: (player) => set({ current_player: player }),
+  
+  setGameMode: (mode) => set((state) => ({
+    current_game: state.current_game ? {
+      ...state.current_game,
+      game_mode: mode
+    } : undefined
+  })),
 
   // Player management
   setPlayers: (players) => set({ players }),

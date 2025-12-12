@@ -51,7 +51,8 @@ export default function App() {
               headerTitleStyle: {
                 fontWeight: '700',
               },
-              headerShown: false,
+              headerBackTitleVisible: false,
+              headerShown: true,
             }}
           >
             <Stack.Screen 
@@ -62,7 +63,7 @@ export default function App() {
             <Stack.Screen 
               name="Auth" 
               component={AuthScreen}
-              options={{ headerShown: false }}
+              options={{ title: 'Sign In' }}
             />
             <Stack.Screen 
               name="Dashboard" 

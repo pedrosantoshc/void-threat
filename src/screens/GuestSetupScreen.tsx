@@ -35,8 +35,9 @@ const GuestSetupScreen: React.FC<GuestSetupScreenProps> = ({ navigation }) => {
 
       // Navigate to guest dashboard (not the stats dashboard)
       navigation.reset({
-        index: 0,
-        routes: [{ name: 'Dashboard' }],
+        // Keep Landing behind so the header back button works
+        index: 1,
+        routes: [{ name: 'Landing' }, { name: 'Dashboard' }],
       });
     }
   };

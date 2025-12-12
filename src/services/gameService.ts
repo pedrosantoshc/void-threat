@@ -59,11 +59,15 @@ export class GameService {
    */
   static async getGameSession(identifier: string): Promise<GameSession | null> {
     try {
-      const { data, error } = await supabase
-        .from('game_sessions')
-        .select('*')
-        .or(`id.eq.${identifier},game_code.eq.${identifier}`)
-        .single();
+      const trimmed = (identifier || '').trim();
+      // Avoid PostgREST trying to cast non-UUID strings into the `id` (uuid) column filter.
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      const query = supabase.from('game_sessions').select('*');
+      const { data, error } = uuidRegex.test(trimmed)
+        ? await query.eq('id', trimmed).single()
+        : await query.eq('game_code', trimmed.toUpperCase()).single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
         console.error('Error fetching game session:', error);

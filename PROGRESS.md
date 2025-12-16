@@ -192,6 +192,28 @@
 - Need to implement proper error boundaries
 - Role assignment algorithm needs optimization for balance
 
+---
+
+## Next Improvements (Planned)
+
+### Patch 1 (Now)
+- Expand supported player count to 5–25 across Standard/Custom flows
+- Fix Create Game share using native share sheet
+- Implement QR scan join via Expo Camera
+- Improve Custom Game UX with sticky live tracker (counts + balance)
+- Fix badge/chip readability on neon backgrounds
+- Implement improved Standard role assignment algorithm (target balance -2..+2)
+- Add Lobby/Waiting Room screen with real-time player count before role assignment
+
+### Milestone 2 (After Patch 1)
+- Make Recent Games clickable:
+  - Ongoing = resume/spectate
+  - Ended = game summary screen (time, winner, eliminations, amulets)
+- Add Spectator mode (read-only moderator-like view for eliminated players)
+
+### Emoji cleanup (Later)
+- Keep emojis for now; tracked in `EMOJI_AUDIT.md` for later replacement.
+
 ### Future Considerations
 - Native Google Sign-In implementation for production
 - Real-time conflict resolution for simultaneous actions

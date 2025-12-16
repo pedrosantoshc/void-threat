@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -7,15 +7,30 @@ import { NavigationStackParamList } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
 import { GameService } from '../services/gameService';
+import { RouteProp } from '@react-navigation/native';
 
 type JoinGameScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'JoinGame'>;
+  route: RouteProp<NavigationStackParamList, 'JoinGame'>;
 };
 
-const JoinGameScreen: React.FC<JoinGameScreenProps> = ({ navigation }) => {
+const JoinGameScreen: React.FC<JoinGameScreenProps> = ({ navigation, route }) => {
   const { currentUser, setCurrentGame, setCurrentPlayer } = useGameStore();
   const [gameCode, setGameCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const prefill = route.params && typeof route.params === 'object' ? route.params.prefillCode : undefined;
+    const autoJoin = route.params && typeof route.params === 'object' ? route.params.autoJoin : false;
+    if (prefill) {
+      setGameCode(prefill.toUpperCase());
+      if (autoJoin) {
+        // fire and forget
+        setTimeout(() => handleJoinGame(), 50);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params]);
 
   const handleJoinGame = async () => {
     if (!gameCode.trim() || !currentUser) return;
@@ -60,15 +75,15 @@ const JoinGameScreen: React.FC<JoinGameScreenProps> = ({ navigation }) => {
   };
 
   const handleScanQR = () => {
-    // TODO: Implement QR code scanning
-    console.log('Open QR scanner');
+    navigation.navigate('QrScanner', { returnTo: 'JoinGame' });
   };
 
   const isValidCode = gameCode.trim().length >= 4;
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Join Game</Text>
@@ -113,7 +128,6 @@ const JoinGameScreen: React.FC<JoinGameScreenProps> = ({ navigation }) => {
                 maxLength={10}
                 autoCapitalize="characters"
                 placeholder="VOID123"
-                autoFocus
               />
               
               <Button
@@ -153,7 +167,8 @@ const JoinGameScreen: React.FC<JoinGameScreenProps> = ({ navigation }) => {
             BACK TO MENU
           </Button>
         </View>
-      </View>
+        </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };

@@ -26,8 +26,13 @@ export const calculateBalance = (roles: RoleAssignment[]): BalanceScore => {
   const alienScore = Math.abs(roles
     .filter(r => r.team === 'alien')
     .reduce((sum, r) => sum + r.grade, 0));
+
+  // Independent roles should influence overall balance, but should not inflate the crew score.
+  const independentScore = roles
+    .filter(r => r.team === 'independent')
+    .reduce((sum, r) => sum + r.grade, 0);
   
-  const totalScore = crewScore - alienScore;
+  const totalScore = crewScore + independentScore - alienScore;
 
   return {
     crew_score: crewScore,
@@ -46,81 +51,64 @@ export const assignStandardRoles = (playerCount: number): AssignmentResult => {
   }
 
   const assignments: RoleAssignment[] = [];
-  
-  // Essential roles that appear in every game
-  const essentialRoles = [
-    'bioscanner',    // Grade 7 - Key crew information
-    'alien',         // Grade -6 - Basic alien
-    'observer',      // Grade 5 - Knows bioscanner
-    'detective',     // Grade 6 - Investigates 3 players
-  ];
 
-  // Add essential roles
-  essentialRoles.forEach(roleKey => {
-    const role = ROLES[roleKey];
-    if (role) {
-      assignments.push({
-        role: roleKey,
-        team: role.team,
-        grade: role.grade,
-        definition: role,
-      });
-    }
+  const pushRole = (roleKey: string) => {
+    const def = ROLES[roleKey];
+    if (!def) return false;
+    assignments.push({
+      role: roleKey,
+      team: def.team,
+      grade: def.grade,
+      definition: def,
+    });
+    return true;
+  };
+
+  // Basic constraints
+  const targetAliens = Math.max(1, Math.round(playerCount * 0.3));
+  const alienRoleOptions = ['alien', 'alien_pup', 'sleep_alien', 'rogue_alien', 'alien_scanner', 'parasyte_alien', 'humanoid_alien', 'infected_crewmember'];
+
+  // 1) Ensure at least one core info role (Bioscanner)
+  pushRole('bioscanner');
+
+  // 2) Add alien team slots (allow duplicates of base 'alien' if needed)
+  for (let i = 0; i < targetAliens; i++) {
+    const pick = alienRoleOptions[i] || 'alien';
+    pushRole(pick);
+  }
+
+  // 3) Fill remaining with a greedy balance heuristic from unique non-basic roles, then crew_member.
+  const used = new Set(assignments.map(a => a.role));
+  const candidates = Object.keys(ROLES).filter(k => {
+    if (k === 'crew_member') return true; // allow repeats as filler
+    if (used.has(k)) return false;
+    return ROLES[k]?.team !== 'alien'; // don't add more aliens beyond target in standard
   });
 
-  // Calculate remaining players
-  let remainingPlayers = playerCount - essentialRoles.length;
-  
-  // Add aliens based on player count (roughly 1/3 of total)
-  const alienCount = Math.max(1, Math.floor(playerCount * 0.3));
-  const additionalAliens = Math.max(0, alienCount - 1); // -1 because we already have basic alien
-  
-  // Additional alien roles (ordered by preference)
-  const alienRoles = ['hunter_alien', 'parasyte_alien', 'dream_alien', 'rogue_alien'];
-  
-  for (let i = 0; i < additionalAliens && i < alienRoles.length && remainingPlayers > 0; i++) {
-    const roleKey = alienRoles[i];
-    const role = ROLES[roleKey];
-    if (role) {
-      assignments.push({
-        role: roleKey,
-        team: role.team,
-        grade: role.grade,
-        definition: role,
-      });
-      remainingPlayers--;
-    }
-  }
+  while (assignments.length < playerCount) {
+    const currentBalance = calculateBalance(assignments).total_score;
+    let bestRole: string | null = null;
+    let bestScore = Number.POSITIVE_INFINITY;
 
-  // Add support crew roles
-  const supportRoles = ['dna_tracker', 'alien_scanner', 'cupid', 'medic'];
-  
-  for (let i = 0; i < supportRoles.length && remainingPlayers > 0; i++) {
-    const roleKey = supportRoles[i];
-    const role = ROLES[roleKey];
-    if (role) {
-      assignments.push({
-        role: roleKey,
-        team: role.team,
-        grade: role.grade,
-        definition: role,
-      });
-      remainingPlayers--;
+    for (const roleKey of candidates) {
+      const def = ROLES[roleKey];
+      if (!def) continue;
+      if (roleKey !== 'crew_member' && used.has(roleKey)) continue;
+      const next = currentBalance + (def.team === 'alien' ? -Math.abs(def.grade) : def.grade);
+      const score = Math.abs(next);
+      if (score < bestScore) {
+        bestScore = score;
+        bestRole = roleKey;
+      }
     }
-  }
 
-  // Fill remaining slots with crew members
-  while (remainingPlayers > 0) {
-    const role = ROLES['crew_member'];
-    if (role) {
-      assignments.push({
-        role: 'crew_member',
-        team: role.team,
-        grade: role.grade,
-        definition: role,
-      });
-      remainingPlayers--;
+    if (!bestRole) {
+      // Fallback
+      bestRole = 'crew_member';
     }
+
+    pushRole(bestRole);
+    if (bestRole !== 'crew_member') used.add(bestRole);
   }
 
   // Calculate balance
@@ -193,12 +181,12 @@ export const getRecommendedPlayerCounts = () => {
     minimum: 5,
     optimal_min: 8,
     optimal_max: 12,
-    maximum: 15,
+    maximum: 25,
     descriptions: {
       5: 'Minimum viable game',
       8: 'Good balance of roles',
       12: 'Optimal experience', 
-      15: 'Maximum supported',
+      25: 'Maximum supported',
     }
   };
 };

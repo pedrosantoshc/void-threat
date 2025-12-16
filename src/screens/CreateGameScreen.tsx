@@ -4,12 +4,13 @@ import { Text, Button, Card, Snackbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
-import * as Sharing from 'expo-sharing';
+import { Share } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { NavigationStackParamList, GameSession } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
 import { GameService } from '../services/gameService';
+import { MAX_PLAYERS } from '../constants/game';
 
 type CreateGameScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'CreateGame'>;
@@ -59,17 +60,9 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
 
   const handleShare = async () => {
     try {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(gameUrl, {
-          mimeType: 'text/plain',
-          dialogTitle: 'Share Void Threat Game',
-        });
-      } else {
-        // Fallback to clipboard
-        await Clipboard.setStringAsync(gameUrl);
-        showSnackbar('Link copied to clipboard!');
-      }
+      await Share.share({
+        message: `Join my Void Threat game: ${gameUrl}\nCode: ${gameCode}`,
+      });
     } catch (error) {
       console.log('Share error:', error);
       showSnackbar('Failed to share');
@@ -100,7 +93,8 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
         host_id: currentUser.id,
         game_code: gameCode,
         game_url: gameUrl,
-        max_players: 15,
+        // Allow up to MAX_PLAYERS to join; moderator can set the intended count during setup.
+        max_players: MAX_PLAYERS,
         player_count: 1, // Host counts as first player
         game_mode: 'standard', // Default, will be changed in mode selector
         status: 'setup',
@@ -196,36 +190,7 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
           </Card.Content>
         </Card>
 
-        {/* Share Buttons */}
-        <View style={styles.shareButtons}>
-          <Text style={styles.shareTitle}>SHARE WITH PLAYERS</Text>
-          <View style={styles.shareButtonRow}>
-            <Button
-              mode="outlined"
-              onPress={handleShare}
-              style={styles.shareButton}
-              labelStyle={styles.shareButtonText}
-            >
-              WhatsApp
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={handleShare}
-              style={styles.shareButton}
-              labelStyle={styles.shareButtonText}
-            >
-              Messages
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={handleShare}
-              style={styles.shareButton}
-              labelStyle={styles.shareButtonText}
-            >
-              More...
-            </Button>
-          </View>
-        </View>
+        {/* Share Buttons removed: use native share sheet from the Share Link section */}
 
         {/* Next Button */}
         <View style={styles.buttonSection}>

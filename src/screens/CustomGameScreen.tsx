@@ -10,14 +10,12 @@ import { darkTheme, spacing } from '../constants/theme';
 import { ALIEN_ROLES, CREW_ROLES, INDEPENDENT_ROLES, ROLES, calculateBalanceScore } from '../constants/roles';
 import { GameService } from '../services/gameService';
 import { useGameStore } from '../store/gameStore';
+import { MAX_PLAYERS, MIN_PLAYERS } from '../constants/game';
 
 type Props = {
   navigation: StackNavigationProp<NavigationStackParamList, 'CustomGame'>;
   route: RouteProp<NavigationStackParamList, 'CustomGame'>;
 };
-
-const MIN_PLAYERS = 5;
-const MAX_PLAYERS = 15;
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -43,6 +41,20 @@ export default function CustomGameScreen({ navigation, route }: Props) {
 
   const totalSelected = useMemo(() => {
     return Object.values(roleCounts).reduce((sum, v) => sum + (v || 0), 0);
+  }, [roleCounts]);
+
+  const teamCounts = useMemo(() => {
+    let crew = 0;
+    let alien = 0;
+    let independent = 0;
+    for (const [roleKey, count] of Object.entries(roleCounts)) {
+      if (!count) continue;
+      const team = ROLES[roleKey]?.team;
+      if (team === 'crew') crew += count;
+      else if (team === 'alien') alien += count;
+      else if (team === 'independent') independent += count;
+    }
+    return { crew, alien, independent };
   }, [roleCounts]);
 
   const alienSelected = useMemo(() => {
@@ -137,7 +149,28 @@ export default function CustomGameScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} stickyHeaderIndices={[0]}>
+        <View style={styles.sticky}>
+          <Text style={styles.stickyTitle}>Live Setup</Text>
+          <View style={styles.stickyRow}>
+            <Text style={styles.stickyText}>Selected: {totalSelected}/{playerCount}</Text>
+            <Text style={styles.stickyText}>Remaining: {remaining}</Text>
+          </View>
+          <View style={styles.stickyRow}>
+            <Text style={styles.stickyText}>Crew: {teamCounts.crew}</Text>
+            <Text style={styles.stickyText}>Aliens: {teamCounts.alien}</Text>
+            <Text style={styles.stickyText}>Indep: {teamCounts.independent}</Text>
+          </View>
+          <View style={styles.stickyRow}>
+            <Text style={styles.stickyText}>
+              Balance: {balance.total_score > 0 ? `+${balance.total_score}` : balance.total_score}
+            </Text>
+            <Text style={[styles.stickyText, !isValid && styles.stickyWarn]}>
+              {isValid ? 'Valid' : 'Fix setup'}
+            </Text>
+          </View>
+        </View>
+
         <View style={styles.header}>
           <Text style={styles.title}>Custom Game</Text>
           <Text style={styles.subtitle}>Pick roles and balance your session</Text>
@@ -215,6 +248,16 @@ export default function CustomGameScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: darkTheme.colors.background },
   content: { padding: spacing.md, paddingBottom: spacing.xl },
+  sticky: {
+    backgroundColor: darkTheme.colors.surface,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  stickyTitle: { color: darkTheme.colors.onSurface, fontWeight: '800', marginBottom: spacing.xs },
+  stickyRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  stickyText: { color: darkTheme.colors.onSurface, fontSize: 12 },
+  stickyWarn: { color: '#FF9800', fontWeight: '800' },
   header: { alignItems: 'center', marginBottom: spacing.lg },
   title: { fontSize: 28, fontWeight: '800', color: darkTheme.colors.primary },
   subtitle: { fontSize: 14, color: darkTheme.colors.onSurfaceVariant },

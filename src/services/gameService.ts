@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { GameSession, GamePlayer, AppUser } from '../types';
+import { MAX_PLAYERS } from '../constants/game';
 
 export class GameService {
   /**
@@ -142,7 +143,7 @@ export class GameService {
       // Get current player count
       const currentPlayers = await this.getGamePlayers(game.id);
       
-      const maxPlayers = (game as any).max_players ?? 15;
+      const maxPlayers = (game as any).max_players ?? MAX_PLAYERS;
       if (currentPlayers.length >= maxPlayers) {
         throw new Error(`Game is full (maximum ${maxPlayers} players)`);
       }

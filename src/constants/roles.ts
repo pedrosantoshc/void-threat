@@ -226,12 +226,16 @@ export const INDEPENDENT_ROLES = Object.entries(ROLES).filter(([_, role]) => rol
 export const calculateBalanceScore = (roleSelection: Record<string, number>) => {
   let crewScore = 0;
   let alienScore = 0;
+  let independentScore = 0;
 
   Object.entries(roleSelection).forEach(([roleName, count]) => {
     const role = ROLES[roleName];
     if (role) {
-      if (role.team === 'crew' || role.team === 'independent') {
+      if (role.team === 'crew') {
         crewScore += role.grade * count;
+      } else if (role.team === 'independent') {
+        // Independent affects overall balance, but should not inflate crew score.
+        independentScore += role.grade * count;
       } else if (role.team === 'alien') {
         alienScore += Math.abs(role.grade) * count;
       }
@@ -241,7 +245,7 @@ export const calculateBalanceScore = (roleSelection: Record<string, number>) => 
   return {
     crew_score: crewScore,
     alien_score: alienScore,
-    total_score: crewScore - alienScore,
+    total_score: crewScore + independentScore - alienScore,
   };
 };
 

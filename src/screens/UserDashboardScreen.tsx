@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   statusChipText: {
-    color: '#FFFFFF',
+    color: darkTheme.colors.background,
     fontSize: 11,
     fontWeight: '600',
   },

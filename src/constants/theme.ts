@@ -62,11 +62,57 @@ export const fontSizes = {
   caption: 10,
 };
 
+// Font families
+export const fontFamilies = {
+  primary: 'BrunoAce-Regular',
+  system: 'System',
+};
+
+// Typography styles
+export const typography = {
+  display: {
+    fontFamily: fontFamilies.primary,
+    fontSize: fontSizes.display,
+    fontWeight: 'normal',
+  },
+  heading1: {
+    fontFamily: fontFamilies.primary,
+    fontSize: fontSizes.heading1,
+    fontWeight: 'normal',
+  },
+  heading2: {
+    fontFamily: fontFamilies.primary,
+    fontSize: fontSizes.heading2,
+    fontWeight: 'normal',
+  },
+  bodyLarge: {
+    fontFamily: fontFamilies.primary,
+    fontSize: fontSizes.bodyLarge,
+    fontWeight: 'normal',
+  },
+  body: {
+    fontFamily: fontFamilies.primary,
+    fontSize: fontSizes.body,
+    fontWeight: 'normal',
+  },
+  bodySmall: {
+    fontFamily: fontFamilies.primary,
+    fontSize: fontSizes.bodySmall,
+    fontWeight: 'normal',
+  },
+  caption: {
+    fontFamily: fontFamilies.primary,
+    fontSize: fontSizes.caption,
+    fontWeight: 'normal',
+  },
+};
+
 // Button styles
 export const buttonStyles = {
   primary: {
     backgroundColor: '#00FF00',
     textColor: '#0A0E27',
+    fontFamily: fontFamilies.primary,
     borderRadius: borderRadius.small,
     padding: {
       vertical: 12,
@@ -76,6 +122,7 @@ export const buttonStyles = {
   secondary: {
     backgroundColor: '#1B1F3B',
     textColor: '#00FF00',
+    fontFamily: fontFamilies.primary,
     borderColor: '#00FF00',
     borderWidth: 1,
     borderRadius: borderRadius.small,
@@ -87,6 +134,7 @@ export const buttonStyles = {
   danger: {
     backgroundColor: '#F44336',
     textColor: '#FFFFFF',
+    fontFamily: fontFamilies.primary,
     borderRadius: borderRadius.small,
     padding: {
       vertical: 12,
@@ -96,6 +144,7 @@ export const buttonStyles = {
   ghost: {
     backgroundColor: 'transparent',
     textColor: '#B0B0B0',
+    fontFamily: fontFamilies.primary,
     borderRadius: borderRadius.small,
     padding: {
       vertical: 12,

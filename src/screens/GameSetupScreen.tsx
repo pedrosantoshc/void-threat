@@ -9,6 +9,7 @@ import { darkTheme, spacing } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
 import { assignStandardRoles, assignCustomRoles, AssignmentResult, shuffleRoles } from '../utils/roleAssignment';
 import { GameService } from '../services/gameService';
+import { MAX_PLAYERS, MIN_PLAYERS } from '../constants/game';
 
 type GameSetupScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'GameSetup'>;
@@ -23,6 +24,7 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({
   const { current_game, players, setPlayers, currentUser } = useGameStore();
   
   const [playerCount, setPlayerCount] = useState(8);
+  const [playerCountText, setPlayerCountText] = useState('8');
   const [assignment, setAssignment] = useState<AssignmentResult | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [showRoles, setShowRoles] = useState(false);
@@ -31,8 +33,14 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({
   useEffect(() => {
     if (current_game?.max_players && current_game?.game_mode === 'custom') {
       setPlayerCount(current_game.max_players);
+      setPlayerCountText(String(current_game.max_players));
     }
   }, [current_game?.max_players, current_game?.game_mode]);
+
+  // Keep text input in sync when playerCount changes programmatically
+  useEffect(() => {
+    setPlayerCountText(String(playerCount));
+  }, [playerCount]);
 
   // Generate role assignment when player count changes (standard) OR when custom_roles changes (custom)
   useEffect(() => {
@@ -178,19 +186,37 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({
                 <View style={styles.playerCountInput}>
                   <TextInput
                     label="Number of Players"
-                    value={playerCount.toString()}
+                    value={playerCountText}
                     onChangeText={(text) => {
-                      const count = parseInt(text) || 0;
-                      if (count >= 5 && count <= 15) {
-                        setPlayerCount(count);
+                      // Allow free typing; validate on blur.
+                      setPlayerCountText(text);
+                    }}
+                    onBlur={async () => {
+                      const raw = parseInt(playerCountText, 10);
+                      if (!Number.isFinite(raw)) {
+                        setPlayerCountText(String(playerCount));
+                        return;
+                      }
+                      const clamped = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, raw));
+                      setPlayerCount(clamped);
+                      setPlayerCountText(String(clamped));
+                      // Persist so join capacity matches intended count (best effort)
+                      try {
+                        if (current_game?.id) {
+                          await GameService.updateGameSession(current_game.id, { max_players: clamped } as any);
+                        }
+                      } catch {
+                        // ignore
                       }
                     }}
                     keyboardType="numeric"
                     style={styles.textInput}
-                    maxLength={2}
+                    maxLength={3}
                   />
                 </View>
-                <Text style={styles.playerCountHelp}>Min: 5 • Optimal: 8-12 • Max: 15</Text>
+                <Text style={styles.playerCountHelp}>
+                  Min: {MIN_PLAYERS} • Optimal: 8-12 • Max: {MAX_PLAYERS}
+                </Text>
               </View>
             )}
           </Card.Content>
@@ -293,43 +319,14 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          {players.length === 0 ? (
-            <Button
-              mode="contained"
-              onPress={handleAssignRoles}
-              loading={isAssigning}
-              disabled={isAssigning || !assignment.isBalanced}
-              style={styles.assignButton}
-              labelStyle={styles.assignButtonText}
-            >
-              {isAssigning ? 'ASSIGNING ROLES...' : 'ASSIGN ROLES & START GAME'}
-            </Button>
-          ) : (
-            <>
-              <Button
-                mode="outlined"
-                onPress={() => setShowRoles(!showRoles)}
-                style={styles.toggleButton}
-                labelStyle={styles.toggleButtonText}
-              >
-                {showRoles ? 'HIDE ROLES' : 'SHOW ROLES'}
-              </Button>
-              <Button
-                mode="contained"
-                onPress={() => {
-                  // Navigate to Night 1 phase
-                  navigation.navigate('NightPhase', { 
-                    game_id: current_game.id, 
-                    night_number: 1 
-                  });
-                }}
-                style={styles.startButton}
-                labelStyle={styles.startButtonText}
-              >
-                START GAME
-              </Button>
-            </>
-          )}
+          <Button
+            mode="contained"
+            onPress={() => navigation.navigate('Lobby', { game_id: current_game?.id || game_id })}
+            style={styles.assignButton}
+            labelStyle={styles.assignButtonText}
+          >
+            GO TO LOBBY (WAITING ROOM)
+          </Button>
         </View>
 
         {/* Info */}

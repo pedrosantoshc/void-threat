@@ -145,10 +145,12 @@ export type NavigationStackParamList = {
   UserProfile: undefined;
   GuestSetup: undefined;
   CreateGame: undefined;
-  JoinGame: undefined;
+  JoinGame: { prefillCode?: string; autoJoin?: boolean } | undefined;
   PaperTest: undefined;
   GameModeSelector: { game_id: string };
   CustomGame: { game_id: string };
+  Lobby: { game_id: string };
+  QrScanner: { returnTo?: 'JoinGame' } | undefined;
   GameSetup: { game_id: string };
   PlayerRole: { game_id: string; player_id: string };
   ModeratorDashboard: { game_id: string };

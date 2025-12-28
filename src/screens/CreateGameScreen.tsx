@@ -10,7 +10,7 @@ import { NavigationStackParamList, GameSession } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
 import { GameService } from '../services/gameService';
-import { MAX_PLAYERS } from '../constants/game';
+import { MAX_PLAYERS, MIN_PLAYERS } from '../constants/game';
 
 type CreateGameScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'CreateGame'>;
@@ -94,8 +94,9 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
         game_code: gameCode,
         game_url: gameUrl,
         // Allow up to MAX_PLAYERS to join; moderator can set the intended count during setup.
-        max_players: MAX_PLAYERS,
-        player_count: 1, // Host counts as first player
+        // For local testing, default to MIN_PLAYERS so you can start with 1 joiner.
+        max_players: __DEV__ ? MIN_PLAYERS : MAX_PLAYERS,
+        player_count: 0, // Moderator is NOT a player
         game_mode: 'standard', // Default, will be changed in mode selector
         status: 'setup',
         current_phase: 'lobby',
@@ -111,11 +112,6 @@ const CreateGameScreen: React.FC<CreateGameScreenProps> = ({ navigation }) => {
       
       // Save game to store
       setCurrentGame(createdGame);
-      
-      // Automatically join the moderator as first player
-      if (currentUser) {
-        await GameService.joinGame(gameCode, currentUser);
-      }
       
       showSnackbar('Game created successfully!');
       

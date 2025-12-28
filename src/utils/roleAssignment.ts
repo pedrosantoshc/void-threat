@@ -46,8 +46,20 @@ export const calculateBalance = (roles: RoleAssignment[]): BalanceScore => {
  * Based on player count, assigns roles to achieve ~0 total balance score
  */
 export const assignStandardRoles = (playerCount: number): AssignmentResult => {
-  if (playerCount < 5) {
-    throw new Error('Minimum 5 players required');
+  // In production we enforce minimum players via UX. In dev/testing we may allow tiny counts.
+  if (playerCount <= 2) {
+    const assignments: RoleAssignment[] = [];
+    const role = ROLES['crew_member'];
+    for (let i = 0; i < playerCount; i++) {
+      assignments.push({
+        role: 'crew_member',
+        team: role.team,
+        grade: role.grade,
+        definition: role,
+      });
+    }
+    const balance = calculateBalance(assignments);
+    return { roles: assignments, balance, isBalanced: true, playerCount };
   }
 
   const assignments: RoleAssignment[] = [];
@@ -65,11 +77,13 @@ export const assignStandardRoles = (playerCount: number): AssignmentResult => {
   };
 
   // Basic constraints
-  const targetAliens = Math.max(1, Math.round(playerCount * 0.3));
+  const targetAliens = playerCount < 5 ? 1 : Math.max(1, Math.round(playerCount * 0.3));
   const alienRoleOptions = ['alien', 'alien_pup', 'sleep_alien', 'rogue_alien', 'alien_scanner', 'parasyte_alien', 'humanoid_alien', 'infected_crewmember'];
 
-  // 1) Ensure at least one core info role (Bioscanner)
-  pushRole('bioscanner');
+  // 1) Ensure at least one core info role (Bioscanner) for real games
+  if (playerCount >= 5) {
+    pushRole('bioscanner');
+  }
 
   // 2) Add alien team slots (allow duplicates of base 'alien' if needed)
   for (let i = 0; i < targetAliens; i++) {

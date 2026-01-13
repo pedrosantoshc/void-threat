@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ImageBackground } from 'react-native';
+import { View, StyleSheet, ImageBackground, ScrollView } from 'react-native';
 import { Text, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -9,8 +9,8 @@ import { darkTheme, spacing } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
 import { GameService } from '../services/gameService';
 
-const standardBg = require('../../assets/standard_game_bg.png');
-const customBg = require('../../assets/custom_game_bg.png');
+const standardBg = require('../../assets/optimized/ui/standard_game_bg.jpg');
+const customBg = require('../../assets/optimized/ui/custom_game_bg.jpg');
 
 type GameModeSelectorScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'GameModeSelector'>;
@@ -43,7 +43,7 @@ const GameModeSelectorScreen: React.FC<GameModeSelectorScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Game Mode</Text>
@@ -132,7 +132,7 @@ const GameModeSelectorScreen: React.FC<GameModeSelectorScreenProps> = ({
             ← Back to Game Setup
           </Button>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -143,9 +143,9 @@ const styles = StyleSheet.create({
     backgroundColor: darkTheme.colors.background,
   },
   content: {
-    flex: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   header: {
     alignItems: 'center',
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   bgOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: darkTheme.colors.background,
-    opacity: 0.6,
+    opacity: 0.78,
   },
   cardContent: {
     padding: spacing.lg,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   bottomActions: {
     alignItems: 'center',
-    marginTop: 'auto',
+    marginTop: spacing.xl,
   },
   backButtonText: {
     color: darkTheme.colors.onSurfaceVariant,

@@ -6,12 +6,22 @@ add column if not exists guest_id uuid;
 
 -- Enforce: either an authenticated user_id OR a guest_id must be present.
 -- NOT VALID means existing rows won't be checked; new rows WILL be checked.
-alter table public.game_players
-add constraint if not exists game_players_identity_check
-check (
-  (user_id is not null and guest_id is null) OR
-  (user_id is null and guest_id is not null)
-) not valid;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'game_players_identity_check'
+      and conrelid = 'public.game_players'::regclass
+  ) then
+    alter table public.game_players
+      add constraint game_players_identity_check
+      check (
+        (user_id is not null and guest_id is null) OR
+        (user_id is null and guest_id is not null)
+      ) not valid;
+  end if;
+end $$;
 
 -- Optional: later, once you're sure existing rows are cleaned up:
 -- alter table public.game_players validate constraint game_players_identity_check;

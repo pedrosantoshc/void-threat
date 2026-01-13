@@ -23,6 +23,9 @@ import GameSetupScreen from './src/screens/GameSetupScreen';
 import PlayerRoleScreen from './src/screens/PlayerRoleScreen';
 import NightPhaseScreen from './src/screens/NightPhaseScreen';
 import DayPhaseScreen from './src/screens/DayPhaseScreen';
+import GameEndScreen from './src/screens/GameEndScreen';
+import SpectatorScreen from './src/screens/SpectatorScreen';
+import AmuletReceivedScreen from './src/screens/AmuletReceivedScreen';
 
 const Stack = createStackNavigator<NavigationStackParamList>();
 
@@ -256,6 +259,21 @@ export default function App() {
               name="DayPhase"
               component={DayPhaseScreen}
               options={{ title: 'Day Phase' }}
+            />
+            <Stack.Screen
+              name="GameEnd"
+              component={GameEndScreen}
+              options={{ title: 'Game Over' }}
+            />
+            <Stack.Screen
+              name="Spectator"
+              component={SpectatorScreen}
+              options={{ title: 'Spectator' }}
+            />
+            <Stack.Screen
+              name="AmuletReceived"
+              component={AmuletReceivedScreen}
+              options={{ title: 'Amulet' }}
             />
           </Stack.Navigator>
         </NavigationContainer>

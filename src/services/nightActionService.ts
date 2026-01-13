@@ -1,5 +1,9 @@
 import { supabase } from '../config/supabase';
 import { NightAction, GamePlayer } from '../types';
+import type { NightResolutionResult, ResolutionDeath, ResolutionTransformation, ResolutionLinkDeath } from '../types/resolution';
+import { GameService } from './gameService';
+import { AmuletService } from './amuletService';
+import { processCloneTransformation, processLinkDeaths } from '../utils/gameLogic';
 
 export class NightActionService {
   /**
@@ -95,12 +99,27 @@ export class NightActionService {
       );
 
       for (const action of scanningActions) {
-        if (!action.target_id) continue;
-
-        const target = players.find(p => p.id === action.target_id);
-        if (!target) continue;
-
         let result = '';
+        let targetName = '';
+
+        // Detective uses 3 manually selected players (target_ids).
+        // Other scans use target_id.
+        if (action.role === 'detective') {
+          const ids = action.target_ids || [];
+          if (ids.length !== 3) {
+            result = 'INVALID TARGETS';
+            targetName = '—';
+          } else {
+            const selected = players.filter(p => ids.includes(p.id) && p.is_alive);
+            const hasAlien = selected.some(p => p.team === 'alien');
+            result = hasAlien ? 'ALIEN DETECTED' : 'NO ALIENS';
+            targetName = selected.map(p => p.username).join(', ') || '—';
+          }
+        } else {
+          if (!action.target_id) continue;
+          const target = players.find(p => p.id === action.target_id);
+          if (!target) continue;
+          targetName = target.username;
 
         switch (action.role) {
           case 'bioscanner':
@@ -109,23 +128,6 @@ export class NightActionService {
           
           case 'dna_tracker':
             result = target.team === 'alien' ? 'ALIEN' : 'CREW';
-            break;
-          
-          case 'detective':
-            // Detective scans 3 adjacent players
-            const targetPosition = target.position_order;
-            const adjacentPositions = [
-              targetPosition - 1,
-              targetPosition,
-              targetPosition + 1
-            ].filter(pos => pos > 0 && pos <= players.length);
-            
-            const adjacentPlayers = players.filter(p => 
-              adjacentPositions.includes(p.position_order)
-            );
-            
-            const hasAlien = adjacentPlayers.some(p => p.team === 'alien');
-            result = hasAlien ? 'ALIEN DETECTED' : 'NO ALIENS';
             break;
           
           case 'alien_scanner':
@@ -139,6 +141,7 @@ export class NightActionService {
           default:
             result = 'UNKNOWN';
             break;
+          }
         }
 
         // Update the action with the result
@@ -149,7 +152,7 @@ export class NightActionService {
 
         scanResults[action.actor_id] = {
           result,
-          targetName: target.username
+          targetName
         };
       }
 
@@ -223,35 +226,280 @@ export class NightActionService {
     gameId: string,
     nightNumber: number,
     players: GamePlayer[]
-  ): Promise<{
-    scanResults: Record<string, { result: string; targetName: string }>;
-    eliminatedPlayers: string[];
-    protectedPlayers: string[];
-  }> {
+  ): Promise<NightResolutionResult> {
     try {
-      // Process all actions in parallel
-      const [scanResults, killTargets, protectedPlayers] = await Promise.all([
+      const alivePlayers = players.filter(p => p.is_alive);
+
+      // Fetch runtime state needed for PRD resolution
+      const [links, amulets, lastNightResolution, actions, scanResults] = await Promise.all([
+        GameService.getGameLinks(gameId).catch(() => []),
+        GameService.getGameAmulets(gameId).catch(() => []),
+        GameService.getLatestNightResolution(gameId).catch(() => null),
+        this.getNightActions(gameId, nightNumber),
         this.processScanActions(gameId, nightNumber, players),
-        this.processKillActions(gameId, nightNumber, players),
-        this.processProtectionActions(gameId, nightNumber)
       ]);
 
-      // Filter out protected players from kills
-      const eliminatedPlayers = killTargets.filter(playerId => 
-        !protectedPlayers.includes(playerId)
+      // Night 1: PRD says no kills/protections; only linking + info + alien meet.
+      if (nightNumber === 1) {
+        const res: NightResolutionResult = {
+          phase: 'night',
+          nightNumber,
+          deaths: [],
+          transformations: [],
+          linkDeaths: [],
+          nextPhaseModifiers: {},
+          silencedPlayers: [],
+          scanResults,
+          protectedPlayers: [],
+          debug: { actions },
+        };
+        await GameService.logGameEvent(gameId, 'night_resolution', res as any);
+        return res;
+      }
+
+      // Determine per-night modifiers from previous resolution (Pup/Quarantined)
+      const prevMods = lastNightResolution?.nextPhaseModifiers || {};
+      const noAlienKills = !!prevMods.noKillsAllowed;
+      const maxAlienKills = prevMods.twoKillsAvailable ? 2 : 1;
+
+      // Collect direct protections (Watchman protect). (Amulets handled by Track B later.)
+      const watchmanProtected = new Set<string>();
+      for (const a of actions) {
+        if (a.action_type !== 'protect') continue;
+        const actor = alivePlayers.find(p => p.id === a.actor_id);
+        if (!actor || actor.role !== 'watchman') continue;
+        if (a.target_id) watchmanProtected.add(a.target_id);
+      }
+
+      // Silencer: list of players silenced for next day.
+      const silencedPlayers = actions
+        .filter(a => a.action_type === 'silence')
+        .map(a => a.target_id)
+        .filter((x): x is string => !!x);
+
+      // Compute kill targets
+      const killTargetIds: Array<{ targetId: string; cause: ResolutionDeath['cause'] }> = [];
+
+      // Alien kills: any action_type='kill' by an alien-team actor, limited by maxAlienKills.
+      if (!noAlienKills) {
+        const alienKillTargets: string[] = [];
+        for (const a of actions) {
+          if (a.action_type !== 'kill') continue;
+          const actor = alivePlayers.find(p => p.id === a.actor_id);
+          if (!actor || actor.team !== 'alien') continue;
+          if (a.target_ids?.length) alienKillTargets.push(...a.target_ids);
+          else if (a.target_id) alienKillTargets.push(a.target_id);
+        }
+        // enforce kill cap, de-dupe while preserving order
+        const deduped = Array.from(new Set(alienKillTargets)).slice(0, maxAlienKills);
+        for (const t of deduped) killTargetIds.push({ targetId: t, cause: 'alien_kill' });
+      }
+
+      // Scientist kill: at most 1 per night entry (tracking once-per-game comes later).
+      for (const a of actions) {
+        if (a.action_type !== 'kill') continue;
+        const actor = alivePlayers.find(p => p.id === a.actor_id);
+        if (!actor || actor.role !== 'scientist') continue;
+        if (a.target_id) killTargetIds.push({ targetId: a.target_id, cause: 'scientist_kill' });
+        break;
+      }
+
+      // Predator hunt: kills alien target; if no aliens alive, can kill crew.
+      for (const a of actions) {
+        if (a.action_type !== 'hunt') continue;
+        const actor = alivePlayers.find(p => p.id === a.actor_id);
+        if (!actor || actor.role !== 'predator') continue;
+        if (!a.target_id) break;
+
+        const target = alivePlayers.find(p => p.id === a.target_id);
+        if (!target) break;
+
+        const aliensAlive = alivePlayers.some(p => p.team === 'alien');
+        if (!aliensAlive) {
+          killTargetIds.push({ targetId: a.target_id, cause: 'predator_hunt' });
+        } else if (target.team === 'alien') {
+          killTargetIds.push({ targetId: a.target_id, cause: 'predator_hunt' });
+        }
+        break;
+      }
+
+      // Apply Watchman protection and compute special cases (Soldier/Infected)
+      const directDeaths: Array<{ playerId: string; cause: ResolutionDeath['cause'] }> = [];
+      let soldierDiesAtDay: string | undefined;
+      const transformations: ResolutionTransformation[] = [];
+
+      for (const k of killTargetIds) {
+        const target = alivePlayers.find(p => p.id === k.targetId);
+        if (!target) continue;
+
+        // Watchman blocks attack (selected PRD EC48 behavior)
+        if (watchmanProtected.has(target.id)) continue;
+
+        // Infected: transforms to alien when attacked by aliens (only for alien_kill cause)
+        if (k.cause === 'alien_kill' && target.role === 'infected_crewmember') {
+          transformations.push({
+            playerId: target.id,
+            playerName: target.username,
+            oldRole: target.role,
+            newRole: 'alien',
+            transformType: 'infected',
+          });
+          await supabase.from('game_players').update({ role: 'alien', team: 'alien' }).eq('id', target.id);
+          continue;
+        }
+
+        // Soldier: survives night, must die next day if actually attacked (and not blocked)
+        if (k.cause === 'alien_kill' && target.role === 'soldier') {
+          soldierDiesAtDay = target.id;
+          continue;
+        }
+
+        directDeaths.push({ playerId: target.id, cause: k.cause });
+      }
+
+      // INTEGRATION PATCH 1: Apply amulet protections (Shielding Device)
+      // PRD EC11: Shield blocks direct eliminations but NOT link deaths
+      const amuletProtection = AmuletService.applyAmuletProtections({
+        targets: directDeaths.map(d => d.playerId),
+        amulets,
+        phase: 'night',
+      });
+
+      // Remove protected players from direct deaths
+      const finalDirectDeaths = directDeaths.filter(
+        d => !amuletProtection.blockedTargetIds.includes(d.playerId)
       );
 
+      // Update protectedPlayers tracking
+      const allProtected = Array.from(new Set([
+        ...Array.from(watchmanProtected),
+        ...amuletProtection.protectedPlayerIds
+      ]));
+
+      // Link cascades (Cupid/Parasyte). PRD: Shielding Device does NOT block link deaths.
+      const linkDeathIds = new Set<string>();
+      for (const d of finalDirectDeaths) {
+        const cascades = processLinkDeaths(d.playerId, links, players);
+        cascades.forEach(id => linkDeathIds.add(id));
+      }
+
+      // Clone transformations when target dies (night side)
+      for (const d of [...finalDirectDeaths.map(x => x.playerId), ...Array.from(linkDeathIds)]) {
+        const t = processCloneTransformation(d, links, players);
+        if (t.cloneId && t.newRole) {
+          const clone = alivePlayers.find(p => p.id === t.cloneId);
+          if (!clone) continue;
+          transformations.push({
+            playerId: clone.id,
+            playerName: clone.username,
+            oldRole: clone.role,
+            newRole: t.newRole,
+            transformType: 'clone',
+          });
+          const newTeam = (players.find(p => p.id === d)?.team) || clone.team;
+          await supabase.from('game_players').update({ role: t.newRole, team: newTeam }).eq('id', clone.id);
+          // Deactivate clone link
+          await supabase
+            .from('links')
+            .update({ is_active: false, triggered_at: new Date().toISOString() })
+            .eq('game_id', gameId)
+            .eq('link_type', 'clone')
+            .eq('player1_id', clone.id);
+        }
+      }
+
+      // Persist deaths to DB
+      const allDeathIds = Array.from(new Set([...finalDirectDeaths.map(d => d.playerId), ...Array.from(linkDeathIds)]));
+      if (allDeathIds.length) {
+        await supabase
+          .from('game_players')
+          .update({
+            is_alive: false,
+            eliminated_by: 'night',
+            eliminated_at: new Date().toISOString(),
+          })
+          .in('id', allDeathIds);
+      }
+
+      // Build structured outputs
+      const deaths: ResolutionDeath[] = finalDirectDeaths.map(d => {
+        const p = players.find(pp => pp.id === d.playerId);
+        return {
+          playerId: d.playerId,
+          playerName: p?.username || 'Unknown',
+          cause: d.cause,
+        };
+      });
+
+      const linkDeaths: ResolutionLinkDeath[] = Array.from(linkDeathIds).map(id => {
+        const p = players.find(pp => pp.id === id);
+        const link = links.find(l => l.is_active && (l.player1_id === id || l.player2_id === id));
+        const linkedToPlayerId = link ? (link.player1_id === id ? (link.player2_id || '') : link.player1_id) : '';
       return {
-        scanResults,
-        eliminatedPlayers,
-        protectedPlayers
+          playerId: id,
+          playerName: p?.username || 'Unknown',
+          linkedToPlayerId,
+          linkType: (link?.link_type || 'cupid') as any,
+        };
+      });
+
+      const nextPhaseModifiers = {
+        twoKillsAvailable: allDeathIds.some(id => players.find(p => p.id === id)?.role === 'alien_pup') || undefined,
+        noKillsAllowed: allDeathIds.some(id => players.find(p => p.id === id)?.role === 'quarantined_crew') || undefined,
+        soldierDiesAtDay,
+        predatorKillMode: !alivePlayers.some(p => p.team === 'alien') || undefined,
       };
+
+      const res: NightResolutionResult = {
+        phase: 'night',
+        nightNumber,
+        deaths,
+        transformations,
+        linkDeaths,
+        nextPhaseModifiers,
+        silencedPlayers: Array.from(new Set(silencedPlayers)),
+        scanResults,
+        protectedPlayers: allProtected,
+        debug: { actions },
+      };
+
+      await GameService.logGameEvent(gameId, 'night_resolution', res as any);
+      for (const t of transformations) {
+        await GameService.logGameEvent(gameId, 'transformation', t as any);
+      }
+
+      // INTEGRATION PATCH 2: Advance amulet triggers after night eliminations
+      const eliminationCount = AmuletService.getEliminationCount(players);
+      const triggeredAmulets = await AmuletService.advanceAmuletTriggers({
+        gameId,
+        eliminationCount,
+      });
+
+      // Log triggered amulets for moderator notification
+      if (triggeredAmulets.length > 0) {
+        await GameService.logGameEvent(gameId, 'phase_change', {
+          phase: 'amulet_triggered',
+          amulets: triggeredAmulets.map(a => ({
+            id: a.id,
+            type: a.amulet_type,
+            trigger_count: a.trigger_elimination_count,
+          })),
+        } as any);
+      }
+
+      return res;
     } catch (error) {
       console.error('Error resolving night phase:', error);
       return {
+        phase: 'night',
+        nightNumber,
+        deaths: [],
+        transformations: [],
+        linkDeaths: [],
+        nextPhaseModifiers: {},
+        silencedPlayers: [],
         scanResults: {},
-        eliminatedPlayers: [],
-        protectedPlayers: []
+        protectedPlayers: [],
       };
     }
   }

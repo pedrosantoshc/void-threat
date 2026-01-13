@@ -1,8 +1,8 @@
 # Void Threat - Development Progress
 
-**Last Updated:** December 10, 2024  
-**Current Phase:** Enhanced Authentication & User Management  
-**Overall Progress:** ~85% MVP Complete
+**Last Updated:** December 29, 2025  
+**Current Phase:** MVP+ Gameplay Completion & Polish  
+**Overall Progress:** ~95% MVP Complete
 
 ---
 
@@ -34,7 +34,7 @@
   - [x] TypeScript interfaces for all game entities
   - [x] Zustand state management setup
   - [x] All 26 role definitions with balance scores
-  - [x] Supabase database schema and RLS policies
+  - [x] Supabase database schema and RLS policies (aligned to `game_sessions` + guest join support)
 
 ### Phase 2: Core Game Flow 🔄 IN PROGRESS
 **Timeline:** Week 3-4 (Current)
@@ -48,13 +48,14 @@
   - [x] Role distribution algorithm based on player count
   - [x] Role balance calculations
   - [x] Player role assignment screen (GameSetup)
-  - [x] Role reveal interface (PlayerRole)
+  - [x] Role reveal interface (PlayerRole) + card art
 
 - [x] **Game Session Management** ✅ COMPLETE
   - [x] Real-time game session creation with Supabase
   - [x] Player join/leave handling system  
   - [x] Game phase state management
   - [x] Session persistence and recovery in Supabase
+  - [x] Lobby/waiting room with real-time player count
 
 ### Phase 3: Night Phase Implementation ✅ COMPLETE
 **Timeline:** Week 5-6 (Completed ahead of schedule)
@@ -116,10 +117,10 @@
 **Timeline:** Week 11-12
 
 - [ ] **Live Synchronization**
-  - [ ] Real-time game state updates
-  - [ ] Player status synchronization
-  - [ ] Action broadcasting
-  - [ ] Conflict resolution
+  - [x] Real-time game state updates (Lobby + Night/Day screens)
+  - [x] Player status synchronization (host-authoritative updates)
+  - [ ] Action broadcasting (full multi-device moderator/player action UI)
+  - [ ] Conflict resolution (edge cases + retries)
 
 - [ ] **Game State Persistence**
   - [ ] Auto-save game progress
@@ -204,6 +205,11 @@
 - Fix badge/chip readability on neon backgrounds
 - Implement improved Standard role assignment algorithm (target balance -2..+2)
 - Add Lobby/Waiting Room screen with real-time player count before role assignment
+- Custom role selection UI refactor (2-column card grid + sticky header + preview modal)
+- Add amulets toggle + selection UI (persisted on `game_sessions.custom_amulets`)
+- Win condition detection + `GameEnd` screen
+- Spectator mode (read-only)
+- Real dashboard stats (no mock values)
 
 ### Milestone 2 (After Patch 1)
 - Make Recent Games clickable:
@@ -213,6 +219,11 @@
 
 ### Emoji cleanup (Later)
 - Keep emojis for now; tracked in `EMOJI_AUDIT.md` for later replacement.
+
+---
+
+## QA
+- Checklist: `void-threat/QA_CHECKLIST.md`
 
 ### Future Considerations
 - Native Google Sign-In implementation for production

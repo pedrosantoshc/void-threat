@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { Text, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -8,6 +8,7 @@ import { NavigationStackParamList, GamePlayer } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
 import { ROLES } from '../constants/roles';
+import AmuletIndicator from '../components/AmuletIndicator';
 
 type PlayerRoleScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'PlayerRole'>;
@@ -19,7 +20,7 @@ const PlayerRoleScreen: React.FC<PlayerRoleScreenProps> = ({
   route,
 }) => {
   const { game_id, player_id } = route.params;
-  const { players } = useGameStore();
+  const { players, amulets } = useGameStore();
   const [player, setPlayer] = useState<GamePlayer | null>(null);
   const [showRole, setShowRole] = useState(false);
 
@@ -46,7 +47,77 @@ const PlayerRoleScreen: React.FC<PlayerRoleScreenProps> = ({
     );
   }
 
+  // If eliminated, send player into spectator mode (read-only).
+  // We keep the role reveal accessible (if they already opened it), but provide a clear path to spectate.
+  const eliminated = !player.is_alive;
+
   const roleDefinition = ROLES[player.role];
+
+  const getRoleArt = (roleKey: string) => {
+    const fallback = require('../../assets/optimized/ui/void-threat-logo.png');
+    switch (roleKey) {
+      // Crew
+      case 'crew_member':
+        return require('../../assets/optimized/crew/crew_member.jpg');
+      case 'bioscanner':
+        return require('../../assets/optimized/crew/bioscanner.jpg');
+      case 'junior_scanner':
+        return require('../../assets/optimized/crew/junior_scanner.jpg');
+      case 'dna_tracker':
+        return require('../../assets/optimized/crew/dna_tracker.jpg');
+      case 'observer':
+        return require('../../assets/optimized/crew/observer.jpg');
+      case 'tragic_hero':
+        return require('../../assets/optimized/crew/tragic_hero.jpg');
+      case 'scientist':
+        return require('../../assets/optimized/crew/scientist.jpg');
+      case 'watchman':
+        return require('../../assets/optimized/crew/watchman.jpg');
+      case 'ship_captain':
+        return require('../../assets/optimized/crew/ship_captain.jpg');
+      case 'vip_passenger':
+        return require('../../assets/optimized/crew/vip_passenger.jpg');
+      case 'ship_doctor':
+        return require('../../assets/optimized/crew/ship_doctor.jpg');
+      case 'detective':
+        return require('../../assets/optimized/crew/detective.jpg');
+      case 'silencer':
+        return require('../../assets/optimized/crew/silencer.jpg');
+      case 'soldier':
+        return require('../../assets/optimized/crew/soldier.jpg');
+      case 'clone':
+        return require('../../assets/optimized/crew/clone.jpg');
+      case 'false_positive':
+        return require('../../assets/optimized/crew/false_positive.jpg');
+      case 'quarantined_crew':
+        return require('../../assets/optimized/crew/quarantined_crew.jpg');
+
+      // Alien
+      case 'alien':
+        return require('../../assets/optimized/alien/alien.jpg');
+      case 'alien_pup':
+        return require('../../assets/optimized/alien/alien_pup.jpg');
+      case 'sleep_alien':
+        return require('../../assets/optimized/alien/sleep_alien.jpg');
+      case 'rogue_alien':
+        return require('../../assets/optimized/alien/rogue_alien.jpg');
+      case 'alien_scanner':
+        return require('../../assets/optimized/alien/alien_scanner.jpg');
+      case 'parasyte_alien':
+        return require('../../assets/optimized/alien/parasyte_alien.jpg');
+      case 'humanoid_alien':
+        return require('../../assets/optimized/alien/humanoid_alien.jpg');
+      case 'infected_crewmember':
+        return require('../../assets/optimized/alien/infected_crewmember.jpg');
+
+      // Independent
+      case 'predator':
+        return require('../../assets/optimized/alien/predator.jpg');
+
+      default:
+        return fallback;
+    }
+  };
 
   const getTeamColor = (team: string) => {
     switch (team) {
@@ -110,6 +181,9 @@ const PlayerRoleScreen: React.FC<PlayerRoleScreenProps> = ({
             {/* Role Card */}
             <Card style={[styles.roleCard, { borderColor: getTeamColor(player.team) }]}>
               <Card.Content style={styles.roleContent}>
+                <View style={styles.roleArtWrap}>
+                  <Image source={getRoleArt(player.role)} style={styles.roleArt} resizeMode="cover" />
+                </View>
                 <View style={styles.roleHeader}>
                   <Text style={[styles.roleName, { color: getTeamColor(player.team) }]}>
                     {roleDefinition?.name || player.role}
@@ -154,6 +228,9 @@ const PlayerRoleScreen: React.FC<PlayerRoleScreenProps> = ({
                     </View>
                   </>
                 )}
+
+                {/* Amulet Indicator */}
+                <AmuletIndicator amulets={amulets} playerId={player.id} />
               </Card.Content>
             </Card>
 
@@ -186,13 +263,16 @@ const PlayerRoleScreen: React.FC<PlayerRoleScreenProps> = ({
             <Button
               mode="contained"
               onPress={() => {
-                // TODO: Navigate to waiting screen or game in progress
+                if (eliminated) {
+                  navigation.navigate('Spectator', { game_id });
+                  return;
+                }
                 navigation.goBack();
               }}
               style={styles.readyButton}
               labelStyle={styles.readyButtonText}
             >
-              I'M READY TO PLAY
+              {eliminated ? 'SPECTATE GAME' : "I'M READY TO PLAY"}
             </Button>
 
             {/* Hide Role Button */}
@@ -297,6 +377,16 @@ const styles = StyleSheet.create({
   },
   roleContent: {
     padding: spacing.lg,
+  },
+  roleArtWrap: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  roleArt: {
+    width: 220,
+    height: 220,
+    borderRadius: 12,
+    backgroundColor: darkTheme.colors.surfaceVariant,
   },
   roleHeader: {
     flexDirection: 'row',

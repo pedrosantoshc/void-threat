@@ -24,6 +24,20 @@ interface UserStats {
   survival_rate: number;
 }
 
+function round1(n: number) {
+  return Math.round(n * 10) / 10;
+}
+
+function winnerMatchesPlayer(team: string, role: string, winner?: string | null) {
+  if (!winner) return false;
+  const w = String(winner).toLowerCase();
+  if (w === 'crew') return team === 'crew';
+  if (w === 'aliens' || w === 'alien') return team === 'alien';
+  if (w === 'predator') return role === 'predator';
+  if (w === 'rogue_alien') return role === 'rogue_alien';
+  return false;
+}
+
 const UserDashboardScreen: React.FC<UserDashboardScreenProps> = ({ navigation }) => {
   const { currentUser, setCurrentUser, resetGame } = useGameStore();
   const [userStats, setUserStats] = useState<UserStats | null>(null);
@@ -54,20 +68,85 @@ const UserDashboardScreen: React.FC<UserDashboardScreenProps> = ({ navigation })
     if (!currentUser) return;
 
     try {
-      // In a real app, you'd have a user_stats table or compute these from game_players
-      // For now, we'll create mock stats
-      const mockStats: UserStats = {
-        total_games: 15,
-        games_won: 8,
-        games_as_crew: 10,
-        games_as_alien: 4,
-        games_as_independent: 1,
-        favorite_role: 'bioscanner',
-        win_rate: 53.3,
-        survival_rate: 66.7,
-      };
+      // Pull this user's participation rows, then compute aggregates.
+      const { data: gp, error: gpError } = await supabase
+        .from('game_players')
+        .select('game_id, team, role, is_alive')
+        .eq('user_id', currentUser.id);
 
-      setUserStats(mockStats);
+      if (gpError) {
+        console.error('Error loading game players for stats:', gpError);
+        return;
+      }
+
+      const rows = (gp || []) as Array<{ game_id: string; team: string; role: string; is_alive: boolean }>;
+      const gameIds = Array.from(new Set(rows.map(r => r.game_id))).filter(Boolean);
+
+      if (gameIds.length === 0) {
+        setUserStats({
+          total_games: 0,
+          games_won: 0,
+          games_as_crew: 0,
+          games_as_alien: 0,
+          games_as_independent: 0,
+          favorite_role: undefined,
+          win_rate: 0,
+          survival_rate: 0,
+        });
+        return;
+      }
+
+      const { data: sessions, error: sError } = await supabase
+        .from('game_sessions')
+        .select('id, status, winner')
+        .in('id', gameIds);
+
+      if (sError) {
+        console.error('Error loading game sessions for stats:', sError);
+        return;
+      }
+
+      const sessionById = new Map<string, { status?: string; winner?: string | null }>();
+      (sessions || []).forEach((s: any) => sessionById.set(s.id, { status: s.status, winner: s.winner }));
+
+      // We only count ended games for win/survival metrics.
+      const endedRows = rows.filter(r => sessionById.get(r.game_id)?.status === 'ended');
+
+      const total_games = endedRows.length;
+      const games_as_crew = endedRows.filter(r => r.team === 'crew').length;
+      const games_as_alien = endedRows.filter(r => r.team === 'alien').length;
+      const games_as_independent = endedRows.filter(r => r.team === 'independent').length;
+
+      const games_won = endedRows.filter(r => winnerMatchesPlayer(r.team, r.role, sessionById.get(r.game_id)?.winner)).length;
+      const survived = endedRows.filter(r => r.is_alive).length;
+
+      // favorite role = mode
+      const roleCounts = new Map<string, number>();
+      for (const r of endedRows) {
+        roleCounts.set(r.role, (roleCounts.get(r.role) || 0) + 1);
+      }
+      let favorite_role: string | undefined;
+      let best = 0;
+      for (const [role, count] of roleCounts.entries()) {
+        if (count > best) {
+          best = count;
+          favorite_role = role;
+        }
+      }
+
+      const win_rate = total_games > 0 ? round1((games_won / total_games) * 100) : 0;
+      const survival_rate = total_games > 0 ? round1((survived / total_games) * 100) : 0;
+
+      setUserStats({
+        total_games,
+        games_won,
+        games_as_crew,
+        games_as_alien,
+        games_as_independent,
+        favorite_role,
+        win_rate,
+        survival_rate,
+      });
     } catch (error) {
       console.error('Error loading user stats:', error);
     }

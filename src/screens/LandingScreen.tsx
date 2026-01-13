@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Asset } from 'expo-asset';
 import { NavigationStackParamList } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
 import { supabase } from '../config/supabase';
@@ -25,9 +26,19 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
     resetGame();
   }, []);
 
+  // Preload critical UI assets for instant first paint
+  React.useEffect(() => {
+    Asset.loadAsync([
+      require('../../assets/optimized/ui/landing_page_bg.jpg'),
+      require('../../assets/optimized/ui/void-threat-logo.png'),
+      require('../../assets/optimized/ui/standard_game_bg.jpg'),
+      require('../../assets/optimized/ui/custom_game_bg.jpg'),
+    ]).catch(() => undefined);
+  }, []);
+
   return (
     <ImageBackground 
-      source={require('../../assets/landing_page_bg.png')} 
+      source={require('../../assets/optimized/ui/landing_page_bg.jpg')} 
       style={styles.backgroundImage}
       resizeMode="cover"
       onError={(error) => console.log('Image load error:', error)}
@@ -45,7 +56,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
             <View style={styles.titleSection}>
               <View style={styles.logoContainer}>
                 <Image 
-                  source={require('../../assets/void-threat-logo.png')}
+                  source={require('../../assets/optimized/ui/void-threat-logo.png')}
                   style={styles.logo}
                   resizeMode="cover"
                 />

@@ -322,11 +322,57 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({
           <Button
             mode="contained"
             onPress={() => navigation.navigate('Lobby', { game_id: current_game?.id || game_id })}
-            style={styles.assignButton}
-            labelStyle={styles.assignButtonText}
+            style={styles.lobbyButton}
+            labelStyle={styles.buttonText}
           >
             GO TO LOBBY (WAITING ROOM)
           </Button>
+
+          <Button
+            mode="contained"
+            onPress={handleAssignRoles}
+            loading={isAssigning}
+            disabled={!assignment || isAssigning}
+            style={styles.assignButton}
+            labelStyle={styles.buttonText}
+          >
+            ASSIGN ROLES TO PLAYERS
+          </Button>
+
+          {players.length > 0 && players.some(p => p.role) && (
+            <>
+              <Button
+                mode="outlined"
+                onPress={() => setShowRoles(!showRoles)}
+                style={styles.toggleButton}
+                labelStyle={styles.toggleButtonText}
+              >
+                {showRoles ? 'Hide Role Assignments' : 'View Role Assignments'}
+              </Button>
+
+              <Button
+                mode="contained"
+                onPress={async () => {
+                  try {
+                    await GameService.startGame(current_game?.id || game_id);
+                    Alert.alert('Game Started!', 'Night 1 begins! Players can now view their roles.', [
+                      {
+                        text: 'Go to Night Phase',
+                        onPress: () => navigation.navigate('NightPhase', { game_id: current_game?.id || game_id, night_number: 1 }),
+                      }
+                    ]);
+                  } catch (error) {
+                    console.error('Error starting game:', error);
+                    Alert.alert('Error', 'Failed to start game');
+                  }
+                }}
+                style={styles.startButton}
+                labelStyle={styles.buttonText}
+              >
+                START GAME (BEGIN NIGHT 1)
+              </Button>
+            </>
+          )}
         </View>
 
         {/* Info */}
@@ -447,12 +493,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.lg,
   },
+  lobbyButton: {
+    backgroundColor: darkTheme.colors.surfaceVariant,
+    borderRadius: 4,
+    paddingVertical: spacing.sm,
+  },
   assignButton: {
     backgroundColor: darkTheme.colors.primary,
     borderRadius: 4,
     paddingVertical: spacing.sm,
   },
-  assignButtonText: {
+  buttonText: {
     color: darkTheme.colors.background,
     fontWeight: '700',
     fontSize: 16,

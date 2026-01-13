@@ -9,7 +9,9 @@ export interface GameSession {
   max_players: number;
   player_count: number;
   game_mode: 'standard' | 'custom';
-  custom_roles?: Record<string, number>; // if/when you add this column
+  custom_roles?: Record<string, number>;
+  custom_amulets?: Record<string, number>;
+  ship_captain_vote_used?: boolean; // Once-per-game double vote usage
   status: 'setup' | 'playing' | 'ended';
   current_phase: string;
   night_number: number;
@@ -75,14 +77,31 @@ export interface Amulet {
   previous_holder_id?: string;
   is_used: boolean;
   used_at?: string; // ISO timestamp
-  trigger_elimination_count?: number; // For mid-game triggers
+  trigger_elimination_count?: number; // For mid-game triggers (2, 3, or 4)
   created_at: string; // ISO timestamp
+
+  // Runtime state fields (not persisted to DB, computed)
+  must_pass_today?: boolean; // Shielding Device / Resonance Tracker daily passing requirement
+  holder_cannot_vote?: boolean; // Resonance Tracker restriction
+  can_be_used?: boolean; // Single-use amulets activation status
+
+  // Neural Implant specific (target selection tracking)
+  neural_target_id?: string; // Player selected by Neural Implant holder
+  neural_holder_id?: string; // Who holds/held the Neural Implant
 }
 
 export interface GameLog {
   id: string;
   game_id: string;
-  event_type: 'night_action' | 'day_elimination' | 'phase_change' | 'link_triggered' | 'transformation' | 'tragic_hero_kill';
+  event_type:
+    | 'night_action'
+    | 'day_elimination'
+    | 'phase_change'
+    | 'link_triggered'
+    | 'transformation'
+    | 'tragic_hero_kill'
+    | 'night_resolution'
+    | 'day_resolution';
   event_data: Record<string, any>;
   created_at: string; // ISO timestamp
 }
@@ -157,4 +176,6 @@ export type NavigationStackParamList = {
   NightPhase: { game_id: string; night_number: number };
   DayPhase: { game_id: string; day_number: number };
   GameEnd: { game_id: string };
+  Spectator: { game_id: string };
+  AmuletReceived: { amulet_id: string; game_id: string };
 };

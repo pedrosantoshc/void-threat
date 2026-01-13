@@ -1,8 +1,73 @@
 import { supabase } from '../config/supabase';
-import { GameSession, GamePlayer, AppUser } from '../types';
+import { GameSession, GamePlayer, AppUser, DayElimination, Link, Amulet, GameLog } from '../types';
+import type { DayResolutionResult, NightResolutionResult } from '../types/resolution';
 import { MAX_PLAYERS } from '../constants/game';
+import { AmuletService } from './amuletService';
 
 export class GameService {
+  static async logGameEvent(
+    gameId: string,
+    eventType: GameLog['event_type'],
+    eventData: Record<string, any>
+  ): Promise<void> {
+    const { error } = await supabase.from('game_logs').insert({
+      game_id: gameId,
+      event_type: eventType,
+      event_data: eventData,
+    });
+    if (error) throw error;
+  }
+
+  static async getLatestNightResolution(gameId: string): Promise<NightResolutionResult | null> {
+    const { data, error } = await supabase
+      .from('game_logs')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('event_type', 'night_resolution')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return (data as any).event_data as NightResolutionResult;
+  }
+
+  static async getLatestDayResolution(gameId: string): Promise<DayResolutionResult | null> {
+    const { data, error } = await supabase
+      .from('game_logs')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('event_type', 'day_resolution')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return (data as any).event_data as DayResolutionResult;
+  }
+
+  static async getGameHistory(gameId: string): Promise<GameLog[]> {
+    const { data, error } = await supabase
+      .from('game_logs')
+      .select('*')
+      .eq('game_id', gameId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []) as GameLog[];
+  }
+
+  static async getGameLinks(gameId: string): Promise<Link[]> {
+    const { data, error } = await supabase.from('links').select('*').eq('game_id', gameId);
+    if (error) throw error;
+    return (data || []) as Link[];
+  }
+
+  static async getGameAmulets(gameId: string): Promise<Amulet[]> {
+    const { data, error } = await supabase.from('amulets').select('*').eq('game_id', gameId);
+    if (error) throw error;
+    return (data || []) as Amulet[];
+  }
+
   /**
    * Get an existing guest player row in a game by guest_id
    */
@@ -273,13 +338,92 @@ export class GameService {
   }
 
   /**
+   * Update a single game player row
+   */
+  static async updateGamePlayer(playerId: string, updates: Partial<GamePlayer>): Promise<GamePlayer> {
+    try {
+      const { data, error } = await supabase
+        .from('game_players')
+        .update(updates)
+        .eq('id', playerId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating game player:', error);
+        throw new Error(`Failed to update player: ${error.message}`);
+      }
+
+      return data as GamePlayer;
+    } catch (error) {
+      console.error('Update player error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Record a day elimination event (for history/statistics)
+   */
+  static async recordDayElimination(gameId: string, dayNumber: number, eliminatedPlayerId: string): Promise<DayElimination> {
+    try {
+      const payload: Omit<DayElimination, 'id' | 'created_at'> = {
+        game_id: gameId,
+        day_number: dayNumber,
+        eliminated_player_id: eliminatedPlayerId,
+        reason: 'vote',
+      };
+
+      const { data, error } = await supabase
+        .from('day_eliminations')
+        .insert(payload as any)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error recording day elimination:', error);
+        throw new Error(`Failed to record elimination: ${error.message}`);
+      }
+
+      return data as DayElimination;
+    } catch (error) {
+      console.error('Record day elimination error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * End a game session and persist winner
+   */
+  static async endGame(gameId: string, winner: string): Promise<GameSession> {
+    return await this.updateGameSession(gameId, {
+      status: 'ended',
+      winner,
+      ended_at: new Date().toISOString(),
+    });
+  }
+
+  /**
    * Start a game (change status from setup to playing)
+   * Also initializes amulets if the game has custom_amulets configured
    */
   static async startGame(gameId: string): Promise<GameSession> {
     try {
+      // Get current game session to check for custom_amulets
+      const game = await this.getGameSession(gameId);
+
+      // Initialize amulets if configured
+      const customAmulets = (game as any).custom_amulets as Record<string, number> | undefined;
+      if (customAmulets && Object.keys(customAmulets).length > 0) {
+        await AmuletService.initializeAmulets(gameId, customAmulets);
+        // Note: Early-game amulets (Shielding Device, Resonance Tracker) are assigned at
+        // the start of Day 1 (after Night 1), not before Night 1.
+      }
+
       const updates: Partial<GameSession> = {
         status: 'playing',
         current_phase: 'night1',
+        night_number: 1,
+        day_number: 0,
         started_at: new Date().toISOString(),
       };
 
@@ -384,5 +528,58 @@ export class GameService {
     } catch (error) {
       return false;
     }
+  }
+
+  /**
+   * Create a link between players (Cupid, Parasyte, Clone)
+   */
+  static async createGameLink(
+    gameId: string,
+    linkType: 'cupid' | 'clone' | 'parasyte',
+    player1Id: string,
+    player2Id?: string
+  ): Promise<Link> {
+    const { data, error } = await supabase
+      .from('links')
+      .insert({
+        game_id: gameId,
+        link_type: linkType,
+        player1_id: player1Id,
+        player2_id: player2Id,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating link:', error);
+      throw new Error(`Failed to create link: ${error.message}`);
+    }
+
+    return data as Link;
+  }
+
+  /**
+   * Check if a link already exists for a given type and player
+   */
+  static async getLinkForPlayer(
+    gameId: string,
+    linkType: 'cupid' | 'clone' | 'parasyte',
+    playerId: string
+  ): Promise<Link | null> {
+    const { data, error } = await supabase
+      .from('links')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('link_type', linkType)
+      .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching link:', error);
+      return null;
+    }
+
+    return data as Link | null;
   }
 }

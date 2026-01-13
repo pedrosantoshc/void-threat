@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Button, Card, ProgressBar, List, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
-import { NavigationStackParamList, GamePlayer, NightAction } from '../types';
+import { NavigationStackParamList, GamePlayer, NightAction, Amulet } from '../types';
 import { darkTheme, spacing } from '../constants/theme';
 import { useGameStore } from '../store/gameStore';
 import { GameService } from '../services/gameService';
 import { ROLES } from '../constants/roles';
+import { NightActionService } from '../services/nightActionService';
+import { checkWinConditions } from '../utils/gameLogic';
+import EchoBeaconModeratorModal from '../components/EchoBeaconModeratorModal';
+import LinkCreationModal from '../components/LinkCreationModal';
+import ShipDoctorProtectionModal from '../components/ShipDoctorProtectionModal';
+import NightActionModal from '../components/NightActionModal';
 
 type NightPhaseScreenProps = {
   navigation: StackNavigationProp<NavigationStackParamList, 'NightPhase'>;
@@ -30,12 +36,56 @@ const NightPhaseScreen: React.FC<NightPhaseScreenProps> = ({
   route,
 }) => {
   const { game_id, night_number } = route.params;
-  const { current_game, players, currentUser } = useGameStore();
+  const { current_game, players, links, setPlayers, setCurrentGame, currentUser } = useGameStore();
   
   const [currentStep, setCurrentStep] = useState(0);
   const [nightSteps, setNightSteps] = useState<NightStep[]>([]);
   const [completedActions, setCompletedActions] = useState<NightAction[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [amulets, setAmulets] = useState<Amulet[]>([]);
+  const [showEchoBeaconModal, setShowEchoBeaconModal] = useState(false);
+  const [activeEchoBeacon, setActiveEchoBeacon] = useState<Amulet | null>(null);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [activeLinkType, setActiveLinkType] = useState<'cupid' | 'parasyte' | 'clone' | null>(null);
+  const [activeLinkActor, setActiveLinkActor] = useState<GamePlayer | null>(null);
+  const [showShipDoctorModal, setShowShipDoctorModal] = useState(false);
+  const [activeShipDoctor, setActiveShipDoctor] = useState<GamePlayer | null>(null);
+  const [showNightActionModal, setShowNightActionModal] = useState(false);
+  const [activeActionPlayer, setActiveActionPlayer] = useState<GamePlayer | null>(null);
+  const [gameLinks, setGameLinks] = useState<any[]>([]);
+
+  const canModerate = !!current_game && !!currentUser && !currentUser.is_guest && current_game.host_id === currentUser.id;
+
+  // Fetch links
+  useEffect(() => {
+    const fetchGameLinks = async () => {
+      const fetchedLinks = await GameService.getGameLinks(game_id).catch(() => []);
+      setGameLinks(fetchedLinks);
+    };
+    fetchGameLinks();
+  }, [game_id]);
+
+  // Ensure we have fresh session/players and stay synced in realtime
+  useEffect(() => {
+    let unsubscribe: undefined | (() => void);
+    (async () => {
+      const fetched = await GameService.getGameSession(game_id);
+      if (fetched) setCurrentGame(fetched);
+      const currentPlayers = await GameService.getGamePlayers(game_id);
+      setPlayers(currentPlayers);
+      const gameAmulets = await GameService.getGameAmulets(game_id).catch(() => []);
+      setAmulets(gameAmulets);
+
+      unsubscribe = GameService.subscribeToGameUpdates(
+        game_id,
+        (g) => setCurrentGame(g),
+        (p) => setPlayers(p)
+      );
+    })();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [game_id]);
 
   // Initialize night steps based on game phase and roles present
   useEffect(() => {
@@ -98,16 +148,14 @@ const NightPhaseScreen: React.FC<NightPhaseScreenProps> = ({
     } else {
       // Night 2+ - Full night cycle with kills and protections
       
-      // Step 1: Protections first
-      const protectionRoles = ['medic', 'guardian'].filter(role => 
-        alivePlayers.some(p => p.role === role)
-      );
+      // Step 1: Protections first (PRD: Watchman protects from night kills)
+      const protectionRoles = ['watchman'].filter(role => alivePlayers.some(p => p.role === role));
       
       if (protectionRoles.length > 0) {
         steps.push({
           id: 'protections',
           title: 'Protection Phase',
-          description: 'Medics and guardians protect players',
+          description: 'Watchman protects a player from alien kill',
           roles: protectionRoles,
           actionType: 'protect',
           isCompleted: false,
@@ -132,16 +180,14 @@ const NightPhaseScreen: React.FC<NightPhaseScreenProps> = ({
         });
       }
 
-      // Step 3: Alien kills
-      const killerRoles = ['alien', 'hunter_alien'].filter(role => 
-        alivePlayers.some(p => p.role === role)
-      );
+      // Step 3: Alien kills (any alien-team member participates)
+      const killerRoles = ['alien'].filter(role => alivePlayers.some(p => p.team === 'alien'));
       
       if (killerRoles.length > 0) {
         steps.push({
           id: 'alien_kills',
           title: 'Alien Elimination',
-          description: 'Aliens choose their targets',
+          description: 'Aliens choose their target(s)',
           roles: killerRoles,
           actionType: 'kill',
           isCompleted: false,
@@ -150,15 +196,15 @@ const NightPhaseScreen: React.FC<NightPhaseScreenProps> = ({
       }
 
       // Step 4: Other night actions
-      const otherRoles = ['hunter', 'predator'].filter(role => 
-        alivePlayers.some(p => p.role === role)
+      const otherRoles = ['predator', 'scientist', 'silencer', 'junior_scanner', 'sleep_alien', 'parasyte_alien', 'clone'].filter(
+        role => alivePlayers.some(p => p.role === role)
       );
       
       if (otherRoles.length > 0) {
         steps.push({
           id: 'other_actions',
           title: 'Special Actions',
-          description: 'Hunter and Predator perform their actions',
+          description: 'Special roles perform their actions',
           roles: otherRoles,
           actionType: 'hunt',
           isCompleted: false,
@@ -194,27 +240,136 @@ const NightPhaseScreen: React.FC<NightPhaseScreenProps> = ({
     }
   };
 
-  const handleCompleteNight = async () => {
+  // Check for active Echo Beacon that needs moderator handling
+  const checkForEchoBeacon = (): Amulet | null => {
+    // Only on Night 2+ (Echo Beacon triggers at 4 eliminations, which is mid-game)
+    if (night_number < 2) return null;
+
+    const echoBeacon = amulets.find(
+      (a) => a.amulet_type === 'echo_beacon' && !a.is_used && a.current_holder_id
+    );
+    return echoBeacon || null;
+  };
+
+  const handleEchoBeaconUsed = async () => {
+    // Refresh amulets after Echo Beacon is marked as used
+    const refreshedAmulets = await GameService.getGameAmulets(game_id).catch(() => []);
+    setAmulets(refreshedAmulets);
+    setShowEchoBeaconModal(false);
+    setActiveEchoBeacon(null);
+
+    // Continue with night completion
+    await proceedWithNightCompletion();
+  };
+
+  const proceedWithNightCompletion = async () => {
     try {
-      setIsProcessing(true);
-      
-      // Process all night actions and determine results
-      // TODO: Implement night resolution logic
-      
+      if (current_game) {
+        // Resolve night (Night 1 produces a resolution log but no deaths per PRD)
+        await NightActionService.resolveNightPhase(game_id, night_number, players);
+
+        const refreshedPlayers = await GameService.getGamePlayers(current_game.id);
+        setPlayers(refreshedPlayers);
+
+        const winner = checkWinConditions(refreshedPlayers, links || []);
+        if (winner) {
+          await GameService.endGame(current_game.id, winner);
+          navigation.navigate('GameEnd', { game_id: current_game.id });
+          return;
+        }
+      }
+
       // Advance to day phase
       if (current_game) {
+        const nextDayNumber = night_number === 1 ? 1 : Math.max(current_game.day_number + 1, 2);
         await GameService.updateGameSession(current_game.id, {
           current_phase: night_number === 1 ? 'day1' : 'day2plus',
-          day_number: night_number === 1 ? 1 : Math.max(current_game.day_number + 1, 2),
+          day_number: nextDayNumber,
         });
+      
+        // Navigate to day phase using the same day number we persisted
+        navigation.navigate('DayPhase', {
+          game_id: game_id,
+          day_number: nextDayNumber,
+        });
+        return;
       }
 
       // Navigate to day phase
-      navigation.navigate('DayPhase', { 
-        game_id: game_id, 
-        day_number: night_number === 1 ? 1 : (current_game?.day_number || 1) + 1 
+      navigation.navigate('DayPhase', {
+        game_id: game_id,
+        day_number: night_number === 1 ? 1 : (current_game?.day_number || 1) + 1
       });
-      
+    } catch (error) {
+      console.error('Error in night completion:', error);
+      Alert.alert('Error', 'Failed to complete night phase');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Open link modal for Cupid/Parasyte/Clone
+  const handleOpenLinkModal = (linkType: 'cupid' | 'parasyte' | 'clone', actor: GamePlayer) => {
+    setActiveLinkType(linkType);
+    setActiveLinkActor(actor);
+    setShowLinkModal(true);
+  };
+
+  // Open Ship Doctor protection modal
+  const handleOpenShipDoctorModal = (doctor: GamePlayer) => {
+    setActiveShipDoctor(doctor);
+    setShowShipDoctorModal(true);
+  };
+
+  // Open generic night action modal
+  const handleOpenNightActionModal = (player: GamePlayer) => {
+    setActiveActionPlayer(player);
+    setShowNightActionModal(true);
+  };
+
+  // Get players with linking roles (Night 1 only)
+  const getLinkingPlayers = () => {
+    if (night_number !== 1) return [];
+    const linkRoles = ['cupid', 'clone', 'parasyte_alien'];
+    return players.filter(p => p.is_alive && linkRoles.includes(p.role));
+  };
+
+  // Get Ship Doctor player (Night 2+)
+  const getShipDoctor = () => {
+    if (night_number < 2) return null;
+    return players.find(p => p.is_alive && p.role === 'ship_doctor');
+  };
+
+  // Get players with night actions
+  const getPlayersWithNightActions = () => {
+    const actionRoles = [
+      'bioscanner', 'junior_scanner', 'dna_tracker', 'detective',
+      'alien_scanner', 'watchman', 'scientist', 'silencer',
+      'alien', 'predator'
+    ];
+    return players.filter(p => p.is_alive && actionRoles.includes(p.role));
+  };
+
+  const handleCompleteNight = async () => {
+    try {
+      setIsProcessing(true);
+
+      // Process all night actions and determine results
+      if (!canModerate) {
+        return;
+      }
+
+      // Check for Echo Beacon before completing
+      const echoBeacon = checkForEchoBeacon();
+      if (echoBeacon) {
+        setActiveEchoBeacon(echoBeacon);
+        setShowEchoBeaconModal(true);
+        setIsProcessing(false);
+        return;
+      }
+
+      await proceedWithNightCompletion();
+
     } catch (error) {
       console.error('Error completing night:', error);
     } finally {
@@ -332,6 +487,77 @@ const NightPhaseScreen: React.FC<NightPhaseScreenProps> = ({
                   </Text>
                 )}
               </View>
+
+              {/* Action Buttons for Current Step */}
+              {canModerate && currentStepInfo.id === 'linking' && (
+                <View style={styles.actionButtonsSection}>
+                  <Text style={styles.actionButtonsTitle}>Record Actions:</Text>
+                  {getLinkingPlayers().map((player) => {
+                    const linkType = player.role === 'cupid' ? 'cupid' :
+                                     player.role === 'clone' ? 'clone' : 'parasyte';
+                    const hasLink = gameLinks.some(l =>
+                      l.link_type === linkType &&
+                      (l.player1_id === player.id || l.player2_id === player.id)
+                    );
+                    return (
+                      <Button
+                        key={player.id}
+                        mode={hasLink ? 'contained' : 'outlined'}
+                        onPress={() => handleOpenLinkModal(linkType, player)}
+                        disabled={hasLink}
+                        style={styles.actionButton}
+                      >
+                        {hasLink ? `✓ ${player.username} (${ROLES[player.role]?.name})` :
+                                  `${player.username} (${ROLES[player.role]?.name})`}
+                      </Button>
+                    );
+                  })}
+                </View>
+              )}
+
+              {canModerate && currentStepInfo.id === 'protections' && (
+                <View style={styles.actionButtonsSection}>
+                  <Text style={styles.actionButtonsTitle}>Record Protections:</Text>
+                  {players.filter(p => p.is_alive && p.role === 'watchman').map((player) => (
+                    <Button
+                      key={player.id}
+                      mode="outlined"
+                      onPress={() => handleOpenNightActionModal(player)}
+                      style={styles.actionButton}
+                    >
+                      {player.username} (Watchman)
+                    </Button>
+                  ))}
+                  {getShipDoctor() && (
+                    <Button
+                      mode="outlined"
+                      onPress={() => handleOpenShipDoctorModal(getShipDoctor()!)}
+                      style={styles.actionButton}
+                    >
+                      {getShipDoctor()!.username} (Ship Doctor)
+                    </Button>
+                  )}
+                </View>
+              )}
+
+              {canModerate && (currentStepInfo.id === 'information' || currentStepInfo.id === 'alien_kills' || currentStepInfo.id === 'other_actions') && (
+                <View style={styles.actionButtonsSection}>
+                  <Text style={styles.actionButtonsTitle}>Record Actions:</Text>
+                  {currentStepInfo.roles.map((role) => {
+                    const playersWithRole = players.filter(p => p.is_alive && p.role === role);
+                    return playersWithRole.map((player) => (
+                      <Button
+                        key={player.id}
+                        mode="outlined"
+                        onPress={() => handleOpenNightActionModal(player)}
+                        style={styles.actionButton}
+                      >
+                        {player.username} ({ROLES[role]?.name || role})
+                      </Button>
+                    ));
+                  })}
+                </View>
+              )}
             </Card.Content>
           </Card>
         )}
@@ -395,7 +621,7 @@ const NightPhaseScreen: React.FC<NightPhaseScreenProps> = ({
                 mode="contained"
                 onPress={handleCompleteNight}
                 loading={isProcessing}
-                disabled={isProcessing}
+                disabled={isProcessing || !canModerate}
                 style={styles.completeButton}
                 labelStyle={styles.completeButtonText}
               >
@@ -405,6 +631,77 @@ const NightPhaseScreen: React.FC<NightPhaseScreenProps> = ({
           </View>
         </View>
       </ScrollView>
+
+      {/* Echo Beacon Moderator Modal */}
+      {activeEchoBeacon && (
+        <EchoBeaconModeratorModal
+          visible={showEchoBeaconModal}
+          onClose={() => {
+            setShowEchoBeaconModal(false);
+            setActiveEchoBeacon(null);
+          }}
+          amulet={activeEchoBeacon}
+          players={players}
+          nightActions={completedActions}
+          onAmuletUsed={handleEchoBeaconUsed}
+        />
+      )}
+
+      {/* Link Creation Modal (Cupid/Parasyte/Clone) */}
+      {activeLinkType && activeLinkActor && (
+        <LinkCreationModal
+          visible={showLinkModal}
+          onClose={() => {
+            setShowLinkModal(false);
+            setActiveLinkType(null);
+            setActiveLinkActor(null);
+          }}
+          linkType={activeLinkType}
+          actorPlayer={activeLinkActor}
+          players={players}
+          gameId={game_id}
+          onLinkCreated={async (link) => {
+            const refreshedLinks = await GameService.getGameLinks(game_id).catch(() => []);
+            setGameLinks(refreshedLinks);
+          }}
+        />
+      )}
+
+      {/* Ship Doctor Protection Modal */}
+      {activeShipDoctor && (
+        <ShipDoctorProtectionModal
+          visible={showShipDoctorModal}
+          onClose={() => {
+            setShowShipDoctorModal(false);
+            setActiveShipDoctor(null);
+          }}
+          shipDoctor={activeShipDoctor}
+          players={players}
+          gameId={game_id}
+          nightNumber={night_number}
+          onProtectionSet={(targetId) => {
+            console.log('Ship Doctor protected:', targetId);
+          }}
+        />
+      )}
+
+      {/* Night Action Modal (Generic for scans, protections, etc.) */}
+      {activeActionPlayer && (
+        <NightActionModal
+          visible={showNightActionModal}
+          onClose={() => {
+            setShowNightActionModal(false);
+            setActiveActionPlayer(null);
+          }}
+          actor={activeActionPlayer}
+          players={players}
+          gameId={game_id}
+          nightNumber={night_number}
+          onActionRecorded={(action) => {
+            setCompletedActions([...completedActions, action]);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -575,6 +872,22 @@ const styles = StyleSheet.create({
     color: darkTheme.colors.background,
     fontWeight: '700',
     fontSize: 14,
+  },
+  actionButtonsSection: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: darkTheme.colors.outline,
+  },
+  actionButtonsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: darkTheme.colors.onSurface,
+    marginBottom: spacing.md,
+  },
+  actionButton: {
+    marginBottom: spacing.sm,
+    borderColor: darkTheme.colors.primary,
   },
 });
 
